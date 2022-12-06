@@ -1082,6 +1082,8 @@
 			<false/>
 			<key>ShowPicker</key>
 			<string>Always</string>
+			<key>SkipCustomEntryCheck</key>
+			<true/>
 			<key>TakeoffDelay</key>
 			<integer>0</integer>
 			<key>Timeout</key>

@@ -418,6 +418,7 @@ OC_SCHEMA
   OC_SCHEMA_STRING_IN ("PickerVariant",      OC_GLOBAL_CONFIG, Misc.Boot.PickerVariant),
   OC_SCHEMA_BOOLEAN_IN ("PollAppleHotKeys",  OC_GLOBAL_CONFIG, Misc.Boot.PollAppleHotKeys),
   OC_SCHEMA_STRING_IN ("ShowPicker",         OC_GLOBAL_CONFIG, Misc.Boot.ShowPicker),
+  OC_SCHEMA_BOOLEAN_IN ("SkipCustomEntryCheck", OC_GLOBAL_CONFIG, Misc.Boot.SkipCustomEntryCheck),
   OC_SCHEMA_INTEGER_IN ("TakeoffDelay",      OC_GLOBAL_CONFIG, Misc.Boot.TakeoffDelay),
   OC_SCHEMA_INTEGER_IN ("Timeout",           OC_GLOBAL_CONFIG, Misc.Boot.Timeout),
 };
