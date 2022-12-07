@@ -1083,7 +1083,7 @@
 			<key>PollAppleHotKeys</key>
 			<false/>
 			<key>ShowPicker</key>
-			<string>Always</string>
+			<true/>
 			<key>SkipCustomEntryCheck</key>
 			<true/>
 			<key>TakeoffDelay</key>
