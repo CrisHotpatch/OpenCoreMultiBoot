@@ -27,8 +27,8 @@ imgbuild() {
 
   echo "Generating Loader Image..."
 
-  GenFw --rebase 0x10000 -o "${BUILD_DIR_ARCH}/EfiLoaderRebased.efi" \
-    "${BUILD_DIR_ARCH}/EfiLoader.efi" || exit 1
+  ImageTool "${arch}" Rebase 0x10000 "${BUILD_DIR_ARCH}/EfiLoader.efi" "${BUILD_DIR_ARCH}/EfiLoaderRebased.efi" || exit 1
+
   "${FV_TOOLS}/EfiLdrImage" -o "${BUILD_DIR}/FV/Efildr${arch}" \
     "${BUILD_DIR_ARCH}/EfiLoaderRebased.efi" "${BUILD_DIR}/FV/DxeIpl${arch}.z" \
     "${BUILD_DIR}/FV/DxeMain${arch}.z" "${BUILD_DIR}/FV/DUETEFIMAINFV${arch}.z" || exit 1
@@ -79,7 +79,7 @@ package() {
     echo "Missing package directory $1 at $(pwd)"
     exit 1
   fi
-  
+
   if [ ! -d "$1"/../FV ]; then
     echo "Missing FV directory $1/../FV at $(pwd)"
     exit 1
@@ -116,28 +116,31 @@ if [ ! -d "${FV_TOOLS}" ]; then
   exit 1
 fi
 
-if [ "${TARGETARCH}" = "" ]; then
-  TARGETARCH="X64"
-fi
-
-if [ "${TARGET}" = "" ]; then
-  TARGET="RELEASE"
-fi
-
-if [ "${TARGETCHAIN}" = "" ]; then
-  TARGETCHAIN="XCODE5"
-fi
-
 if [ "${INTREE}" != "" ]; then
   # In-tree compilation is merely for packing.
   cd .. || exit 1
 
-  build -a "${TARGETARCH}" -b "${TARGET}" -t ${TARGETCHAIN} -p OpenCorePkg/OpenDuetPkg.dsc || exit 1
+  if [ "${TARGETARCH}" = "" ]; then
+    TARGETARCH="X64"
+  fi
+
+  if [ "${TARGET}" = "" ]; then
+    TARGET="RELEASE"
+  fi
+
+  if [ "${TARGETCHAIN}" = "" ]; then
+    TARGETCHAIN="XCODE5"
+  fi
+
+  build -a "${TARGETARCH}" -b "${TARGET}" -t "${TARGETCHAIN}" -p OpenCorePkg/OpenDuetPkg.dsc || exit 1
   BUILD_DIR="${WORKSPACE}/Build/OpenDuetPkg/${TARGET}_${TARGETCHAIN}"
   BUILD_DIR_ARCH="${BUILD_DIR}/${TARGETARCH}"
   imgbuild "${TARGETARCH}"
 else
-  TARGETS=(DEBUG RELEASE)
+  if [ "$TARGETS" = "" ]; then
+    TARGETS=(DEBUG RELEASE)
+    export TARGETS
+  fi
   if [ "$ARCHS" = "" ]; then
     ARCHS=(X64 IA32)
     export ARCHS
@@ -146,7 +149,6 @@ else
   SELFPKG=OpenDuetPkg
   NO_ARCHIVES=1
 
-  export TARGETS
   export SELFPKG_DIR
   export SELFPKG
   export NO_ARCHIVES
