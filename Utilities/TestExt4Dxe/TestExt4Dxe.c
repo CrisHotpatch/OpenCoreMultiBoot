@@ -9,17 +9,22 @@
 #include <UserMemory.h>
 #include <string.h>
 
-#define MAP_TABLE_SIZE  0x100
-#define CHAR_FAT_VALID  0x01
+#define OPEN_FILE_MODES_COUNT  3
+#define MAP_TABLE_SIZE         0x100
+#define CHAR_FAT_VALID         0x01
 
 #define TO_UPPER(a)  (CHAR16) ((a) <= 0xFF ? mEngUpperMap[a] : (a))
 
 UINT8  _gPcd_FixedAtBuild_PcdUefiVariableDefaultLang[4]         = { 101, 110, 103, 0 };
 UINT8  _gPcd_FixedAtBuild_PcdUefiVariableDefaultPlatformLang[6] = { 101, 110, 45, 85, 83, 0 };
 
-UINTN        mFuzzOffset;
-UINTN        mFuzzSize;
-CONST UINT8  *mFuzzPointer;
+STATIC UINTN        mFuzzOffset;
+STATIC UINTN        mFuzzSize;
+STATIC CONST UINT8  *mFuzzPointer;
+
+STATIC EFI_SIMPLE_FILE_SYSTEM_PROTOCOL  *mEfiSfsInterface;
+
+STATIC UINT64  mOpenFileModes[OPEN_FILE_MODES_COUNT] = { EFI_FILE_MODE_READ, EFI_FILE_MODE_WRITE, EFI_FILE_MODE_CREATE };
 
 CHAR8  mEngUpperMap[MAP_TABLE_SIZE];
 CHAR8  mEngLowerMap[MAP_TABLE_SIZE];
@@ -192,6 +197,47 @@ EfiLibUninstallAllDriverProtocols2 (
   return EFI_NOT_FOUND;
 }
 
+EFI_STATUS
+EFIAPI
+WrapInstallMultipleProtocolInterfaces (
+  IN OUT EFI_HANDLE  *Handle,
+  ...
+  )
+{
+  VA_LIST     Args;
+  EFI_STATUS  Status;
+  EFI_GUID    *Protocol;
+  VOID        *Interface;
+
+  if (Handle == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  VA_START (Args, Handle);
+  for (Status = EFI_SUCCESS; !EFI_ERROR (Status);) {
+    //
+    // If protocol is NULL, then it's the end of the list
+    //
+    Protocol = VA_ARG (Args, EFI_GUID *);
+    if (Protocol == NULL) {
+      break;
+    }
+
+    Interface = VA_ARG (Args, VOID *);
+
+    //
+    // If this is Sfs protocol then save interface into global state
+    //
+    if (CompareGuid (Protocol, &gEfiSimpleFileSystemProtocolGuid)) {
+      mEfiSfsInterface = Interface;
+    }
+  }
+
+  VA_END (Args);
+
+  return Status;
+}
+
 VOID
 FreeAll (
   IN CHAR16          *FileName,
@@ -246,31 +292,71 @@ FuzzReadDisk (
   return EFI_SUCCESS;
 }
 
+STATIC
+VOID
+ConfigureMemoryAllocations (
+  IN  CONST UINT8  *Data,
+  IN  UINTN        Size
+  )
+{
+  UINT32  Off;
+
+  mPoolAllocationIndex = 0;
+  mPageAllocationIndex = 0;
+
+  //
+  // Limit single pool allocation size to 3GB
+  //
+  SetPoolAllocationSizeLimit (BASE_1GB | BASE_2GB);
+
+  Off = sizeof (UINT64);
+  if (Size >= Off) {
+    CopyMem (&mPoolAllocationMask, &Data[Size - Off], sizeof (UINT64));
+  } else {
+    mPoolAllocationMask = MAX_UINT64;
+  }
+
+  Off += sizeof (UINT64);
+  if (Size >= Off) {
+    CopyMem (&mPageAllocationMask, &Data[Size - Off], sizeof (UINT64));
+  } else {
+    mPageAllocationMask = MAX_UINT64;
+  }
+}
+
+STATIC
 INT32
-LLVMFuzzerTestOneInput (
+TestExt4Dxe (
   CONST UINT8  *FuzzData,
   UINTN        FuzzSize
   )
 {
-  EFI_STATUS         Status;
-  EXT4_PARTITION     *Part;
-  EXT4_FILE          *File;
-  EFI_FILE_PROTOCOL  *This;
-  UINTN              BufferSize;
-  VOID               *Buffer;
-  EFI_FILE_PROTOCOL  *NewHandle;
-  CHAR16             *FileName;
-  VOID               *Info;
-  UINTN              Len;
-  UINT64             Position;
-  UINT64             FileSize;
-
-  mFuzzOffset  = 0;
-  mFuzzPointer = FuzzData;
-  mFuzzSize    = FuzzSize;
+  EFI_STATUS             Status;
+  EXT4_PARTITION         *Part;
+  EXT4_FILE              *File;
+  EFI_FILE_PROTOCOL      *This;
+  EFI_DISK_IO_PROTOCOL   *DiskIo;
+  EFI_BLOCK_IO_PROTOCOL  *BlockIo;
+  EFI_HANDLE             DeviceHandle;
+  UINTN                  BufferSize;
+  VOID                   *Buffer;
+  EFI_FILE_PROTOCOL      *NewHandle;
+  CHAR16                 *FileName;
+  VOID                   *Info;
+  UINTN                  Len;
+  UINT64                 Position;
+  UINT64                 FileSize;
+  UINTN                  Index;
 
   Part       = NULL;
   BufferSize = 100;
+
+  mFuzzOffset      = 0;
+  mFuzzSize        = FuzzSize;
+  mFuzzPointer     = FuzzData;
+  mEfiSfsInterface = NULL;
+
+  DeviceHandle = (EFI_HANDLE)0xDEADBEAFULL;
 
   //
   // Construct file name
@@ -283,7 +369,7 @@ LLVMFuzzerTestOneInput (
   ASAN_CHECK_MEMORY_REGION (FileName, BufferSize);
 
   if ((mFuzzSize - mFuzzOffset) < BufferSize) {
-    FreeAll (FileName, Part);
+    FreePool (FileName);
     return 0;
   }
 
@@ -292,118 +378,72 @@ LLVMFuzzerTestOneInput (
   mFuzzOffset  += BufferSize - 2;
 
   //
-  // Construct File System
+  // Construct BlockIo and DiskIo interfaces
   //
-  Part = AllocateZeroPool (sizeof (EXT4_PARTITION));
-  if (Part == NULL) {
-    FreeAll (FileName, Part);
+  DiskIo = AllocateZeroPool (sizeof (EFI_DISK_IO_PROTOCOL));
+  if (DiskIo == NULL) {
+    FreePool (FileName);
     return 0;
   }
+
+  ASAN_CHECK_MEMORY_REGION (DiskIo, sizeof (EFI_DISK_IO_PROTOCOL));
+
+  DiskIo->ReadDisk = FuzzReadDisk;
+
+  BlockIo = AllocateZeroPool (sizeof (EFI_BLOCK_IO_PROTOCOL));
+  if (BlockIo == NULL) {
+    FreePool (FileName);
+    FreePool (DiskIo);
+    return 0;
+  }
+
+  ASAN_CHECK_MEMORY_REGION (BlockIo, sizeof (EFI_BLOCK_IO_PROTOCOL));
+
+  BlockIo->Media = AllocateZeroPool (sizeof (EFI_BLOCK_IO_MEDIA));
+  if (BlockIo->Media == NULL) {
+    FreePool (FileName);
+    FreePool (DiskIo);
+    FreePool (BlockIo);
+    return 0;
+  }
+
+  ASAN_CHECK_MEMORY_REGION (BlockIo->Media, sizeof (EFI_BLOCK_IO_MEDIA));
+
+  //
+  // Check Ext4 SuperBlock magic like it done
+  // in Ext4IsBindingSupported routine
+  //
+  if (!Ext4SuperblockCheckMagic (DiskIo, BlockIo)) {
+    // Don't halt on bad magic, just keep going
+    DEBUG ((DEBUG_WARN, "[ext4] Superblock contains bad magic \n"));
+  }
+
+  //
+  // Open partition
+  //
+  Status = Ext4OpenPartition (DeviceHandle, DiskIo, NULL, BlockIo);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[ext4] Error mounting: %r\n", Status));
+    FreePool (FileName);
+    FreePool (BlockIo->Media);
+    FreePool (BlockIo);
+    FreePool (DiskIo);
+    return 0;
+  }
+
+  Part = (EXT4_PARTITION *)mEfiSfsInterface;
 
   ASAN_CHECK_MEMORY_REGION (Part, sizeof (EXT4_PARTITION));
-
-  InitializeListHead (&Part->OpenFiles);
-
-  Part->DiskIo = AllocateZeroPool (sizeof (EFI_DISK_IO_PROTOCOL));
-  if (Part->DiskIo == NULL) {
-    FreeAll (FileName, Part);
-    return 0;
-  }
-
-  ASAN_CHECK_MEMORY_REGION (Part->DiskIo, sizeof (EFI_DISK_IO_PROTOCOL));
-
-  Part->DiskIo->ReadDisk = FuzzReadDisk;
-
-  Part->BlockIo = AllocateZeroPool (sizeof (EFI_BLOCK_IO_PROTOCOL));
-  if (Part->BlockIo == NULL) {
-    FreeAll (FileName, Part);
-    return 0;
-  }
-
-  ASAN_CHECK_MEMORY_REGION (Part->BlockIo, sizeof (EFI_BLOCK_IO_PROTOCOL));
-
-  Part->BlockIo->Media = AllocateZeroPool (sizeof (EFI_BLOCK_IO_MEDIA));
-  if (Part->BlockIo->Media == NULL) {
-    FreeAll (FileName, Part);
-    return 0;
-  }
-
-  ASAN_CHECK_MEMORY_REGION (Part->BlockIo->Media, sizeof (EFI_BLOCK_IO_MEDIA));
-
-  Status = Ext4OpenSuperblock (Part);
-  if (EFI_ERROR (Status)) {
-    FreeAll (FileName, Part);
-    return 0;
-  }
-
-  Part->Interface.Revision   = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION;
-  Part->Interface.OpenVolume = Ext4OpenVolume;
 
   This = (EFI_FILE_PROTOCOL *)Part->Root;
 
   //
   // Test Ext4Dxe driver
   //
-  Status = Ext4Open (This, &NewHandle, FileName, EFI_FILE_MODE_READ, 0);
-  if (Status == EFI_SUCCESS) {
-    Buffer     = NULL;
-    BufferSize = 0;
-    Status     = Ext4ReadFile (NewHandle, &BufferSize, Buffer);
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-      Buffer = AllocateZeroPool (BufferSize);
-      if (Buffer == NULL) {
-        FreeAll (FileName, Part);
-        return 0;
-      }
-
-      ASAN_CHECK_MEMORY_REGION (Buffer, BufferSize);
-
-      Ext4ReadFile (NewHandle, &BufferSize, Buffer);
-
-      Ext4WriteFile (NewHandle, &BufferSize, Buffer);
-
-      FreePool (Buffer);
-    }
-
-    Len    = 0;
-    Info   = NULL;
-    Status = Ext4GetInfo (NewHandle, &gEfiFileInfoGuid, &Len, Info);
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-      Info = AllocateZeroPool (Len);
-      Ext4GetInfo (NewHandle, &gEfiFileInfoGuid, &Len, Info);
-      FreePool (Info);
-    }
-
-    Len    = 0;
-    Status = Ext4GetInfo (NewHandle, &gEfiFileSystemInfoGuid, &Len, Info);
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-      Info = AllocateZeroPool (Len);
-      Ext4GetInfo (NewHandle, &gEfiFileSystemInfoGuid, &Len, Info);
-      FreePool (Info);
-    }
-
-    Len    = 0;
-    Status = Ext4GetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, &Len, Info);
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-      Info = AllocateZeroPool (Len);
-      Ext4GetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, &Len, Info);
-      FreePool (Info);
-    }
-
-    Ext4SetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, Len, Info);
-
-    //
-    // Test position functions
-    //
-    Ext4GetPosition (NewHandle, &Position);
-    Ext4SetPosition (NewHandle, Position);
-
-    //
-    // Trying to reach the end of file and read/write it
-    //
-    Position = (UINT64)-1;
-    Status   = Ext4SetPosition (NewHandle, Position);
-    if (!EFI_ERROR (Status)) {
+  for (Index = 0; Index < OPEN_FILE_MODES_COUNT; Index++) {
+    Status = Ext4Open (This, &NewHandle, FileName, mOpenFileModes[Index], 0);
+    if (Status == EFI_SUCCESS) {
       Buffer     = NULL;
       BufferSize = 0;
       Status     = Ext4ReadFile (NewHandle, &BufferSize, Buffer);
@@ -422,22 +462,139 @@ LLVMFuzzerTestOneInput (
 
         FreePool (Buffer);
       }
-    }
 
-    //
-    // Trying to reach out of bound of FileSize
-    //
-    File     = EXT4_FILE_FROM_THIS (NewHandle);
-    FileSize = EXT4_INODE_SIZE (File->Inode);
-    if (FileSize < (UINT64)-1 - 1) {
-      Position = FileSize + 1;
+      Len    = 0;
+      Info   = NULL;
+      Status = Ext4GetInfo (NewHandle, &gEfiFileInfoGuid, &Len, Info);
+      if (Status == EFI_BUFFER_TOO_SMALL) {
+        Info = AllocateZeroPool (Len);
+        if (Info == NULL) {
+          FreeAll (FileName, Part);
+          return 0;
+        }
+
+        Ext4GetInfo (NewHandle, &gEfiFileInfoGuid, &Len, Info);
+        FreePool (Info);
+      }
+
+      Len    = 0;
+      Status = Ext4GetInfo (NewHandle, &gEfiFileSystemInfoGuid, &Len, Info);
+      if (Status == EFI_BUFFER_TOO_SMALL) {
+        Info = AllocateZeroPool (Len);
+        if (Info == NULL) {
+          FreeAll (FileName, Part);
+          return 0;
+        }
+
+        Ext4GetInfo (NewHandle, &gEfiFileSystemInfoGuid, &Len, Info);
+        FreePool (Info);
+      }
+
+      Len    = 0;
+      Status = Ext4GetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, &Len, Info);
+      if (Status == EFI_BUFFER_TOO_SMALL) {
+        Info = AllocateZeroPool (Len);
+        if (Info == NULL) {
+          FreeAll (FileName, Part);
+          return 0;
+        }
+
+        Ext4GetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, &Len, Info);
+        FreePool (Info);
+      }
+
+      Ext4SetInfo (NewHandle, &gEfiFileSystemVolumeLabelInfoIdGuid, Len, Info);
+
+      //
+      // Test position functions
+      //
+      Ext4GetPosition (NewHandle, &Position);
       Ext4SetPosition (NewHandle, Position);
-    }
 
-    Ext4Delete (NewHandle);
+      //
+      // Trying to reach the end of file and read/write it
+      //
+      Position = (UINT64)-1;
+      Status   = Ext4SetPosition (NewHandle, Position);
+      if (!EFI_ERROR (Status)) {
+        Buffer     = NULL;
+        BufferSize = 0;
+        Status     = Ext4ReadFile (NewHandle, &BufferSize, Buffer);
+        if (Status == EFI_BUFFER_TOO_SMALL) {
+          Buffer = AllocateZeroPool (BufferSize);
+          if (Buffer == NULL) {
+            FreeAll (FileName, Part);
+            return 0;
+          }
+
+          ASAN_CHECK_MEMORY_REGION (Buffer, BufferSize);
+
+          Ext4ReadFile (NewHandle, &BufferSize, Buffer);
+
+          Ext4WriteFile (NewHandle, &BufferSize, Buffer);
+
+          FreePool (Buffer);
+        }
+      }
+
+      //
+      // Trying to reach out of bound of FileSize
+      //
+      File     = EXT4_FILE_FROM_THIS (NewHandle);
+      FileSize = EXT4_INODE_SIZE (File->Inode);
+      if (FileSize < (UINT64)-1 - 1) {
+        Position = FileSize + 1;
+        Status   = Ext4SetPosition (NewHandle, Position);
+        if (!EFI_ERROR (Status)) {
+          Buffer     = NULL;
+          BufferSize = 0;
+          Status     = Ext4ReadFile (NewHandle, &BufferSize, Buffer);
+
+          ASSERT (Status == EFI_DEVICE_ERROR);
+        }
+      }
+
+      Ext4Delete (NewHandle);
+    }
   }
 
   FreeAll (FileName, Part);
+
+  return 0;
+}
+
+INT32
+LLVMFuzzerTestOneInput (
+  CONST UINT8  *FuzzData,
+  UINTN        FuzzSize
+  )
+{
+  VOID  *NewData;
+
+  if (FuzzSize == 0) {
+    return 0;
+  }
+
+  //
+  // Override InstallMultipleProtocolInterfaces with custom wrapper
+  //
+  gBS->InstallMultipleProtocolInterfaces = WrapInstallMultipleProtocolInterfaces;
+
+  ConfigureMemoryAllocations (FuzzData, FuzzSize);
+
+  NewData = AllocatePool (FuzzSize);
+  if (NewData != NULL) {
+    CopyMem (NewData, FuzzData, FuzzSize);
+    TestExt4Dxe (NewData, FuzzSize);
+    FreePool (NewData);
+  }
+
+  DEBUG ((
+    DEBUG_POOL | DEBUG_PAGE,
+    "UMEM: Allocated %u pools %u pages\n",
+    (UINT32)mPoolAllocations,
+    (UINT32)mPageAllocations
+    ));
 
   return 0;
 }
