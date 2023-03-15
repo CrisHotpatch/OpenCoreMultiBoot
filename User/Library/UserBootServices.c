@@ -7,12 +7,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 EFI_BOOT_SERVICES  mBootServices = {
   .RaiseTPL                  = DummyRaiseTPL,
+  .RestoreTPL                = DummyRestoreTPL,
   .LocateProtocol            = DummyLocateProtocol,
   .AllocatePages             = DummyAllocatePages,
-  .InstallConfigurationTable = DummyInstallConfigurationTable
+  .InstallConfigurationTable = DummyInstallConfigurationTable,
+  .CalculateCrc32            = DummyCalculateCrc32
 };
 
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  mConOut = {
@@ -25,7 +28,8 @@ EFI_SYSTEM_TABLE  mSystemTable = {
 };
 
 EFI_RUNTIME_SERVICES  mRuntimeServices = {
-  .Hdr = { 0 },
+  .Hdr     = { 0 },
+  .GetTime = DummyGetTime,
 };
 
 EFI_SYSTEM_TABLE   *gST = &mSystemTable;
@@ -47,9 +51,16 @@ DummyRaiseTPL (
   IN EFI_TPL  NewTpl
   )
 {
-  ASSERT (FALSE);
-
   return 0;
+}
+
+VOID
+EFIAPI
+DummyRestoreTPL (
+  IN EFI_TPL  NewTpl
+  )
+{
+  return;
 }
 
 EFI_STATUS
@@ -218,6 +229,22 @@ DummyInstallConfigurationTable (
 
 EFI_STATUS
 EFIAPI
+DummyCalculateCrc32 (
+  IN  VOID    *Data,
+  IN  UINTN   DataSize,
+  OUT UINT32  *CrcOut
+  )
+{
+  if ((Data == NULL) || (DataSize == 0) || (CrcOut == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  *CrcOut = CalculateCrc32 (Data, DataSize);
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+EFIAPI
 NullTextOutputString (
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This,
   IN CHAR16                           *String
@@ -232,6 +259,53 @@ NullTextOutputString (
     }
 
     ++String;
+  }
+
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+EFIAPI
+DummyGetTime (
+  OUT EFI_TIME               *Time,
+  OUT EFI_TIME_CAPABILITIES  *Capabilities
+  )
+{
+  time_t     EpochTime;
+  struct tm  *TimeInfo;
+
+  if (Time == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  EpochTime = time (NULL);
+  TimeInfo  = localtime (&EpochTime);
+
+  if (TimeInfo == NULL) {
+    return EFI_DEVICE_ERROR;
+  }
+
+  Time->TimeZone = EFI_UNSPECIFIED_TIMEZONE;
+  Time->Daylight = 0;
+  Time->Second   = (UINT8)TimeInfo->tm_sec;
+  Time->Minute   = (UINT8)TimeInfo->tm_min;
+  Time->Hour     = (UINT8)TimeInfo->tm_hour;
+  Time->Day      = (UINT8)TimeInfo->tm_mday;
+  //
+  // The EFI_TIME Month field count months from 1 to 12,
+  // while tm_mon counts from 0 to 11
+  //
+  Time->Month = (UINT8)(TimeInfo->tm_mon + 1);
+  //
+  // According ISO/IEC 9899:1999 7.23.1 the tm_year field
+  // contains number of years since 1900
+  //
+  Time->Year = (UINT16)(TimeInfo->tm_year + 1900);
+
+  if (Capabilities) {
+    Capabilities->Accuracy   = 0;
+    Capabilities->Resolution = 1;
+    Capabilities->SetsToZero = FALSE;
   }
 
   return EFI_SUCCESS;

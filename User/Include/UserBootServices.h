@@ -24,6 +24,12 @@ DummyRaiseTPL (
   IN EFI_TPL  NewTpl
   );
 
+VOID
+EFIAPI
+DummyRestoreTPL (
+  IN EFI_TPL  NewTpl
+  );
+
 EFI_STATUS
 EFIAPI
 DummyLocateProtocol (
@@ -50,9 +56,24 @@ DummyInstallConfigurationTable (
 
 EFI_STATUS
 EFIAPI
+DummyCalculateCrc32 (
+  IN  VOID    *Data,
+  IN  UINTN   DataSize,
+  OUT UINT32  *CrcOut
+  );
+
+EFI_STATUS
+EFIAPI
 NullTextOutputString (
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This,
   IN CHAR16                           *String
+  );
+
+EFI_STATUS
+EFIAPI
+DummyGetTime (
+  OUT EFI_TIME               *Time,
+  OUT EFI_TIME_CAPABILITIES  *Capabilities
   );
 
 #endif // OC_USER_BOOT_SERVICES_H

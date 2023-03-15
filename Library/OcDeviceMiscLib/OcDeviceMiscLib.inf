@@ -38,6 +38,7 @@
 
 [Protocols]
   gEfiPciIoProtocolGuid
+  gEfiPciRootBridgeIoProtocolGuid
   gEfiDecompressProtocolGuid
 
   # For handle parsing
@@ -62,6 +63,7 @@
   PrintLib
   UefiLib
   UefiBootServicesTableLib
+  DxeServicesTableLib
 
 [Sources]
   ActivateHpetSupport.c

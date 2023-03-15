@@ -140,6 +140,7 @@ OcAcpiPatchTables (
   EFI_STATUS           Status;
   UINT32               Index;
   OC_ACPI_PATCH_ENTRY  *UserPatch;
+  CONST CHAR8          *Comment;
   OC_ACPI_PATCH        Patch;
 
   for (Index = 0; Index < Config->Acpi.Patch.Count; ++Index) {
@@ -148,6 +149,8 @@ OcAcpiPatchTables (
     if (!UserPatch->Enabled) {
       continue;
     }
+
+    Comment = OC_BLOB_GET (&UserPatch->Comment);
 
     //
     // Ignore patch if:
@@ -161,7 +164,7 @@ OcAcpiPatchTables (
        || ((UserPatch->Mask.Size > 0) && (UserPatch->Find.Size != UserPatch->Mask.Size))
        || ((UserPatch->ReplaceMask.Size > 0) && (UserPatch->Replace.Size != UserPatch->ReplaceMask.Size)))
     {
-      DEBUG ((DEBUG_ERROR, "OC: ACPI patch %u is borked\n", Index));
+      DEBUG ((DEBUG_ERROR, "OC: ACPI patch (%a) at %u is borked\n", Comment, Index));
       continue;
     }
 
@@ -190,16 +193,17 @@ OcAcpiPatchTables (
 
     DEBUG ((
       DEBUG_INFO,
-      "OC: Applying %u byte ACPI patch patch at %u, skip %u, count %u\n",
+      "OC: Applying %u byte ACPI patch (%a) at %u, skip %u, count %u\n",
       Patch.Size,
-      (UINT32)Index,
+      Comment,
+      Index,
       Patch.Skip,
       Patch.Count
       ));
 
     Status = AcpiApplyPatch (Context, &Patch);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_WARN, "OC: ACPI patcher failed %u - %r\n", Index, Status));
+      DEBUG ((DEBUG_WARN, "OC: ACPI patcher failed (%a) at %u - %r\n", Comment, Index, Status));
     }
   }
 }

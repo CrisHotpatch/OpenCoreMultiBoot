@@ -26,6 +26,7 @@ buildutil() {
     "TestMacho"
     "TestMp3"
     "TestExt4Dxe"
+    "TestFatDxe"
     "TestNtfsDxe"
     "TestPeCoff"
     "TestProcessKernel"
@@ -135,6 +136,7 @@ package() {
       "CsrUtil.efi"
       "GopStop.efi"
       "KeyTester.efi"
+      "ListPartitions.efi"
       "MmapDump.efi"
       "ResetSystem.efi"
       "RtcRw.efi"
@@ -248,6 +250,42 @@ package() {
       echo "Failed to find OpenDuetPkg at ${booter}!"
     fi
   done
+
+  # Copy Mac Pro GOP firmware driver.
+  mkdir -p "${dstdir}/Utilities/EnableGop" || exit 1
+  ENABLE_GOP_GUID="3FBA58B1-F8C0-41BC-ACD8-253043A3A17F"
+  ffsNames=(
+    "EnableGop"
+    "EnableGopDirect"
+    )
+  for ffsName in "${ffsNames[@]}"; do
+    cp "FV/Ffs/${ENABLE_GOP_GUID}${ffsName}/${ENABLE_GOP_GUID}.ffs" "${dstdir}/Utilities/EnableGop/${ffsName}.ffs" || exit 1
+  done
+  gopDrivers=(
+    "EnableGop.efi"
+    "EnableGopDirect.efi"
+    )
+  for file in "${gopDrivers[@]}"; do
+    cp "X64/${file}" "${dstdir}/Utilities/EnableGop"/ || exit 1
+  done
+  helpFiles=(
+    "README.md"
+    "UEFITool_Inserted_Screenshot.png"
+    "vBiosInsert.sh"
+  )
+  for file in "${helpFiles[@]}"; do
+    cp "${selfdir}/Staging/EnableGop/${file}" "${dstdir}/Utilities/EnableGop"/ || exit 1
+  done
+
+  # Provide EDK-II BaseTools.
+  mkdir "${dstdir}/Utilities/BaseTools" || exit 1
+  if [ "$(unamer)" = "Windows" ]; then
+    cp "${selfdir}/UDK/BaseTools/Bin/Win32/EfiRom.exe" "${dstdir}/Utilities/BaseTools" || exit 1
+    cp "${selfdir}/UDK/BaseTools/Bin/Win32/GenFfs.exe" "${dstdir}/Utilities/BaseTools" || exit 1
+  else
+    cp "${selfdir}/UDK/BaseTools/Source/C/bin/EfiRom" "${dstdir}/Utilities/BaseTools" || exit 1
+    cp "${selfdir}/UDK/BaseTools/Source/C/bin/GenFfs" "${dstdir}/Utilities/BaseTools" || exit 1
+  fi
 
   utils=(
     "ACPIe"

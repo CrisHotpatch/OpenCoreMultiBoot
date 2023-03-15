@@ -117,9 +117,9 @@ OcAbcInitialize (
     Settings->AvoidRuntimeDefrag,
     Settings->DevirtualiseMmio,
     Settings->DisableSingleUser,
-    Settings->ForceBooterSignature,
     Settings->DisableVariableWrite,
     Settings->ProtectSecureBoot,
+    Settings->ForceBooterSignature,
     Settings->DiscardHibernateMap,
     Settings->EnableSafeModeSlide,
     Settings->EnableWriteUnprotector
@@ -127,7 +127,7 @@ OcAbcInitialize (
 
   DEBUG ((
     DEBUG_INFO,
-    "OCABC: FEXITBS %d PRMRG %d CSLIDE %d MSLIDE %d PRSRV %d RBMAP %d VMAP %d APPLOS %d RTPERMS %d ARBAR %d\n",
+    "OCABC: FEXITBS %d PRMRG %d CSLIDE %d MSLIDE %d PRSRV %d RBMAP %d VMAP %d APPLOS %d RTPERMS %d ARBAR %d RBIO %d\n",
     Settings->ForceExitBootServices,
     Settings->ProtectMemoryRegions,
     Settings->ProvideCustomSlide,
@@ -137,7 +137,8 @@ OcAbcInitialize (
     Settings->SetupVirtualMap,
     Settings->SignalAppleOS,
     Settings->SyncRuntimePermissions,
-    Settings->ResizeAppleGpuBars
+    Settings->ResizeAppleGpuBars,
+    Settings->ResizeUsePciRbIo
     ));
 
   DEBUG_CODE_BEGIN ();
