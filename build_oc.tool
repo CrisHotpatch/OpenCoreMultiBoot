@@ -315,7 +315,7 @@ package() {
   cp "${selfdir}/Utilities/ocvalidate/README.md" "${dstdir}/Utilities/ocvalidate"/ || exit 1
 
   pushd "${dstdir}" || exit 1
-  zip -qr -FS ../"OpenCore-${ver}-${2}.zip" ./* || exit 1
+  zip -qr -FS ../"OpenCoreMultiBoot-${ver}-${2}.zip" ./* || exit 1
   popd || exit 1
   rm -rf "${dstdir}" || exit 1
 

@@ -399,6 +399,25 @@ OcMiscGetVersionString (
   return mOpenCoreVersion;
 }
 
+CONST CHAR8 *
+OcWelcomeString (
+  VOID
+  )
+{
+
+  STATIC CHAR8 mWelcome[] = {
+    "Telegram 👨🏻‍💻 @CrisHotpatch"
+  };
+
+  STATIC BOOLEAN mWelcomeReady;
+
+  if (!mWelcomeReady) {
+    mWelcomeReady = TRUE;
+  }
+
+  return mWelcome;
+}
+
 EFI_STATUS
 OcMiscEarlyInit (
   IN  OC_STORAGE_CONTEXT  *Storage,
