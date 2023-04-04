@@ -50,7 +50,7 @@ OcPciInfoDump (
   ASSERT (Root != NULL);
 
   FileBufferSize = SIZE_1KB;
-  FileBuffer     = (CHAR8 *)AllocateZeroPool (FileBufferSize);
+  FileBuffer     = AllocateZeroPool (FileBufferSize);
   if (FileBuffer == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -64,6 +64,7 @@ OcPciInfoDump (
                   );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "OCDM: No PCI devices found for dumping - %r\n", Status));
+    FreePool (FileBuffer);
     return Status;
   }
 
