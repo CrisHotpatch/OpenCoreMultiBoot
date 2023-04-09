@@ -1,5 +1,9 @@
 OpenCore Changelog
 ==================
+#### v0.9.2
+- Added `DisableIoMapperMapping` quirk, thx @CaseySJ
+- Fixed disabling single user mode when Apple Secure Boot is enabled
+
 #### v0.9.1
 - Fixed long comment printing for ACPI patches, thx @corpnewt
 - Added sample config for VS Code source level debugging with `gdb`
