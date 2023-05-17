@@ -1,7 +1,7 @@
 \documentclass[]{article}
 %DIF LATEXDIFF DIFFERENCE FILE
-%DIF DEL PreviousConfiguration.tex   Thu Apr  6 01:56:05 2023
-%DIF ADD ../Configuration.tex        Sat Apr  8 16:31:21 2023
+%DIF DEL PreviousConfiguration.tex   Wed May 10 20:45:31 2023
+%DIF ADD ../Configuration.tex        Wed May 10 21:21:40 2023
 
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
@@ -118,7 +118,7 @@
 %DIF HYPERREF PREAMBLE %DIF PREAMBLE
 \providecommand{\DIFadd}[1]{\texorpdfstring{\DIFaddtex{#1}}{#1}} %DIF PREAMBLE
 \providecommand{\DIFdel}[1]{\texorpdfstring{\DIFdeltex{#1}}{}} %DIF PREAMBLE
-%DIF LISTINGS PREAMBLE %DIF PREAMBLE
+%DIF COLORLISTINGS PREAMBLE %DIF PREAMBLE
 \RequirePackage{listings} %DIF PREAMBLE
 \RequirePackage{color} %DIF PREAMBLE
 \lstdefinelanguage{DIFcode}{ %DIF PREAMBLE
@@ -154,7 +154,7 @@
 
        \vspace{0.2in}
 
-       Reference Manual (0.9\DIFdelbegin \DIFdel{.1}\DIFdelend \DIFaddbegin \DIFadd{.2}\DIFaddend )
+       Reference Manual (0.9\DIFdelbegin \DIFdel{.2}\DIFdelend \DIFaddbegin \DIFadd{.3}\DIFaddend )
 
        \vspace{0.2in}
 
@@ -922,6 +922,8 @@ ACPI changes apply globally (to every operating system) with the following effec
 \item \texttt{Add} is processed.
 \end{itemize}
 
+\emph{Note}: \texttt{RebaseRegions} and \texttt{SyncTableIds} quirks are special and are processed after all other ACPI changes since they can only be applied on the final ACPI configuration including all the patches and added tables.
+
 Applying the changes globally resolves the problems of incorrect operating system
 detection (consistent with the ACPI specification, not possible before the operating
 system boots), operating system chainloading, and difficult ACPI debugging. Hence,
@@ -1600,10 +1602,9 @@ To view their current state, use the \texttt{pmset -g} command in Terminal.
   \href{https://web.archive.org/web/20200517125051/https://support.apple.com/en-us/HT201573}{archived article}
   to understand how to use single user mode with this quirk enabled.
 
-  \DIFaddbegin \emph{\DIFadd{Note}}\DIFadd{: When Apple Secure Boot is enabled single user mode is always disabled.
-}
+  \emph{Note}: When Apple Secure Boot is enabled single user mode is always disabled.
 
-\DIFaddend \item
+\item
   \texttt{DisableVariableWrite}\\
   \textbf{Type}: \texttt{plist\ boolean}\\
   \textbf{Failsafe}: \texttt{false}\\
@@ -2032,9 +2033,9 @@ Kernel and kext changes apply with the following effective order:
 \begin{itemize}
 \tightlist
 \item \texttt{Block} is processed.
+\item \texttt{Add} and \texttt{Force} are processed.
 \item \texttt{Emulate} and \texttt{Quirks} are processed.
 \item \texttt{Patch} is processed.
-\item \texttt{Add} and \texttt{Force} are processed.
 \end{itemize}
 
 \subsection{Properties}\label{kernelprops}
@@ -2575,10 +2576,13 @@ Kernel and kext changes apply with the following effective order:
   \texttt{AppleCpuPmCfgLock}\\
   \textbf{Type}: \texttt{plist\ boolean}\\
   \textbf{Failsafe}: \texttt{false}\\
-  \textbf{Requirement}: 10.4-12\\
+  \textbf{Requirement}: 10.4\\
   \textbf{Description}: Disables \texttt{PKG\_CST\_CONFIG\_CONTROL} (\texttt{0xE2})
   MSR modification in AppleIntelCPUPowerManagement.kext, commonly causing early
   kernel panic, when it is locked from writing.
+
+  \emph{Note}: AppleIntelCPUPowerManagement.kext is removed as of macOS 13.
+  However, a legacy version can be injected and thus get patched using this quirk.
 
   Some types of firmware lock the \texttt{PKG\_CST\_CONFIG\_CONTROL} MSR
   register and the bundled \texttt{ControlMsrE2} tool can be used to check its
@@ -2715,24 +2719,28 @@ Kernel and kext changes apply with the following effective order:
   \emph{Note 2}: Misconfigured IOMMU in the firmware may result in broken devices
   such as ethernet or Wi-Fi adapters. For instance, an ethernet adapter may cycle in link-up
   link-down state infinitely and a Wi-Fi adapter may fail to discover networks.
-  Gigabyte is one of the most common OEMs with these issues\DIFaddbegin \DIFadd{.
-}
+  Gigabyte is one of the most common OEMs with these issues.
 
 \item
-  \texttt{\DIFadd{DisableIoMapperMapping}}\\
-  \textbf{\DIFadd{Type}}\DIFadd{: }\texttt{\DIFadd{plist\ boolean}}\\
-  \textbf{\DIFadd{Failsafe}}\DIFadd{: }\texttt{\DIFadd{false}}\\
-  \textbf{\DIFadd{Requirement}}\DIFadd{: 13.3 (not required for older)}\\
-  \textbf{\DIFadd{Description}}\DIFadd{: Disables mapping PCI bridge device memory in IOMMU (VT-d).
-}
+  \texttt{DisableIoMapperMapping}\\
+  \textbf{Type}: \texttt{plist\ boolean}\\
+  \textbf{Failsafe}: \texttt{false}\\
+  \textbf{Requirement}: 13.3 (not required for older)\\
+  \textbf{Description}: Disables mapping PCI bridge device memory in IOMMU (VT-d).
 
-  \emph{\DIFadd{Note 1}}\DIFadd{: This option resolves compatibility issues with Wi-Fi, Ethernet and
+  \DIFdelbegin \emph{\DIFdel{Note 1}}%DIFAUXCMD
+\DIFdel{: }\DIFdelend This option resolves compatibility issues with Wi-Fi, Ethernet and
   Thunderbolt devices when AppleVTD is enabled on systems where the native DMAR table
-  contains one or more Reserved Memory Regions.
+  contains one or more Reserved Memory Regions and \DIFdelbegin \DIFdel{iGPU is enabled and }\DIFdelend more than 16 GB memory is installed.
+  \DIFaddbegin \DIFadd{On some systems, this quirk is only needed when iGPU is enabled.
+}\DIFaddend 
+
+  \DIFaddbegin \emph{\DIFadd{Note 1}}\DIFadd{: This quirk requires a native DMAR table that does not contain Reserved Memory
+  Regions or a substitute SSDT-DMAR.aml in which Reserved Memory Regions
+  have been removed.
 }
 
-  \emph{\DIFadd{Note 2}}\DIFadd{: This option is not needed on AMD systems or any Intel system
-  where the native DMAR table does not contain any Reserved Memory Regions}\DIFaddend .
+  \DIFaddend \emph{Note 2}: This option is not needed on AMD systems.
 
 \item
   \texttt{DisableLinkeditJettison}\\
@@ -3936,17 +3944,24 @@ cat Kernel.panic | grep macOSProcessedStackshotData |
       \item \texttt{+} --- Positive filtering: Only present selected modules.
       \item \texttt{-} --- Negative filtering: Exclude selected modules.
   \end{itemize}
-  When multiple ones are selected, comma (\texttt{,}) should be used as the splitter.
-  For instance, \texttt{+OCCPU,OCA,OCB} means \emph{only} \texttt{OCCPU}, \texttt{OCA}, \texttt{OCB} being printed,
-  while \texttt{-OCCPU,OCA,OCB} indicates these modules being filtered out (i.e. \emph{not} logged).
-  When no symbol is specified, positive filtering (\texttt{+}) will be used.
-  \texttt{*} indicates all modules being logged.
+  When multiple log line identifiers are selected, comma (\texttt{,}) should be used as the splitter.
+  For instance, \texttt{+OCCPU,OCA,OCB} means only \texttt{OCCPU}, \texttt{OCA}, \texttt{OCB} should be
+  logged, while \texttt{-OCCPU,OCA,OCB} indicates these modules should be filtered out (i.e. not logged).
+  Since there may be lines in the log with no valid prefix (i.e. log lines which are not generated by
+  parts of OpenCore, but by other loaded drivers) then the special module name question mark (\texttt{?})
+  can be included in the list to include (with positive filtering) or exclude (with negative filtering)
+  these non-standard lines. When no \texttt{+} or \texttt{-} symbol is specified, positive filtering
+  (\texttt{+}) will be used. \texttt{*} alone as the option value indicates all modules being logged.
 
   \emph{Note 1}: Acronyms of libraries can be found in the
   \hyperref[oc-mod-libs]{\texttt{Libraries}} section below.
 
-  \emph{Note 2}: Messages printed before the configuration of log protocol
-  cannot be filtered.
+  \emph{Note 2}: Messages printed before the configuration of the log protocol cannot be filtered
+  from the early on screen log, but on being de-buffered from the early log buffer, will be filtered
+  as requested for other log targets.
+
+  \emph{Note 3}: To avoid missing key issues, warning and error log messages
+  are not filtered.
 
 \item
   \texttt{SysReport}\\
@@ -7065,7 +7080,12 @@ the driver within the \texttt{UEFI/Drivers} section:
   Amount of time in milliseconds to wait for all widgets to come fully on, applied per codec
   during driver connection phase. In most systems this should not be needed and a faster boot
   will be achieved by using \texttt{Audio} section \texttt{SetupDelay} if any audio setup delay
-  is required. Where required, values of up to one second may be needed. \medskip
+  is required. Where required, values of up to one second may be needed\DIFaddbegin \DIFadd{. }\medskip
+
+  \item \texttt{\DIFadd{-}{}\DIFadd{-force-codec}} \DIFadd{- Integer value, no default. }\medskip
+
+  \DIFadd{Force use of an audio codec, this value should be equal to }\texttt{\DIFadd{Audio}} \DIFadd{section }\texttt{\DIFadd{AudioCodec}}\DIFadd{.
+  Can result in faster boot especially when used in conjuction with }\texttt{\DIFadd{-}{}\DIFadd{-force-device}}\DIFaddend . \medskip
 
 	\item \texttt{-{}-force-device} - String value, no default. \medskip
 
@@ -8168,6 +8188,26 @@ for additional options.
 \begin{enumerate}
 
 \item
+  \texttt{InitialMode}\\
+  \textbf{Type}: \texttt{plist\ string}\\
+  \textbf{Failsafe}: \texttt{Auto}\\
+  \textbf{Description}: Selects the internal \texttt{ConsoleControl} mode in
+  which \texttt{TextRenderer} will operate.
+
+  Available values are \texttt{Auto}, \texttt{Text} and \texttt{Graphics}.
+  \texttt{Text} and \texttt{Graphics} specify the named mode. \texttt{Auto}
+  uses the current mode of the system \texttt{ConsoleControl} protocol when
+  one exists, defaulting to \texttt{Text} mode otherwise.
+
+  UEFI firmware typically supports \texttt{ConsoleControl} with two
+  rendering modes: \texttt{Graphics} and \texttt{Text}. Some types of firmware
+  do not provide a native \texttt{ConsoleControl} and rendering modes. OpenCore
+  and macOS expect text to only be shown in \texttt{Text} mode but
+  graphics to be drawn in any mode, and this is how the OpenCore \texttt{Builtin}
+  renderer behaves. Since this is not required by the UEFI specification, behaviour
+  of the system \texttt{ConsoleControl} protocol, when it exists, may vary.
+
+\item
   \texttt{TextRenderer}\\
   \textbf{Type}: \texttt{plist\ string}\\
   \textbf{Failsafe}: \texttt{BuiltinGraphics}\\
@@ -8175,43 +8215,48 @@ for additional options.
   console output.
 
   Currently two renderers are supported: \texttt{Builtin} and
-  \texttt{System}. \texttt{System} renderer uses firmware services
-  for text rendering. \texttt{Builtin} bypassing firmware services
-  and performs text rendering on its own. Different renderers support
-  a different set of options. It is recommended to use \texttt{Builtin}
-  renderer, as it supports HiDPI mode and uses full screen resolution.
+  \texttt{System}. The \texttt{System} renderer uses firmware services
+  for text rendering, however with additional options provided to
+  sanitize the output. The \texttt{Builtin} renderer bypasses firmware
+  services and performs text rendering on its own. Each renderer
+  supports a different set of options. It is recommended to use the
+  \texttt{Builtin} renderer, as it supports HiDPI mode and uses
+  full screen resolution.
 
-  UEFI firmware typically supports \texttt{ConsoleControl} with two
-  rendering modes: \texttt{Graphics} and \texttt{Text}. Some types of firmware
-  do not support \texttt{ConsoleControl} and rendering modes. OpenCore
-  and macOS expect text to only be shown in \texttt{Graphics} mode and
-  graphics to be drawn in any mode. Since this is not required by UEFI
-  specification, exact behaviour varies.
+  Each renderer provides its own \texttt{ConsoleControl} protocol
+  (in the case of \texttt{SystemGeneric} only, this passes some
+  operations through to the system \texttt{ConsoleControl} protocol,
+  if one exists).
 
-  Valid values are combinations of text renderer and rendering mode:
+  Valid values of this option are combinations of the renderer to use
+  and the \texttt{ConsoleControl} mode to set on the underlying system
+  \texttt{ConsoleControl} protocol before starting. To control the initial
+  mode of the provided \texttt{ConsoleControl} protocol once started, use
+  the \texttt{InitialMode} option.
 
   \begin{itemize}
   \tightlist
   \item \texttt{BuiltinGraphics} --- Switch to \texttt{Graphics}
-    mode and use \texttt{Builtin} renderer with
+    mode then use \texttt{Builtin} renderer with
     custom \texttt{ConsoleControl}.
   \item \texttt{BuiltinText} --- Switch to \texttt{Text}
-    mode and use \texttt{Builtin} renderer with
+    mode then use \texttt{Builtin} renderer with
     custom \texttt{ConsoleControl}.
   \item \texttt{SystemGraphics} --- Switch to \texttt{Graphics}
-    mode and use \texttt{System} renderer with
+    mode then use \texttt{System} renderer with
     custom \texttt{ConsoleControl}.
   \item \texttt{SystemText} --- Switch to \texttt{Text}
-    mode and use \texttt{System} renderer with
+    mode then use \texttt{System} renderer with
     custom \texttt{ConsoleControl}.
   \item \texttt{SystemGeneric} --- Use \texttt{System} renderer with
-    system \texttt{ConsoleControl} assuming it behaves correctly.
+    custom a \texttt{ConsoleControl} protocol which passes its mode set and
+    get operations through to system \texttt{ConsoleControl} when it exists.
   \end{itemize}
 
   The use of \texttt{BuiltinGraphics} is straightforward.
   For most platforms, it is necessary to enable \texttt{ProvideConsoleGop}
   and set \texttt{Resolution} to \texttt{Max}. The \texttt{BuiltinText} variant is
-  an alternative \texttt{BuiltinGraphics} for some very old and defective
+  an alternative to \texttt{BuiltinGraphics} for some very old and defective
   laptop firmware, which can only draw in \texttt{Text} mode.
 
   The use of \texttt{System} protocols is more complicated. Typically,
@@ -8235,8 +8280,6 @@ for additional options.
   with the \texttt{WxH} (e.g. \texttt{80x24}) formatted string.
 
   Set to \texttt{Max} to attempt using the largest available console mode.
-  This option is currently ignored as the \texttt{Builtin} text renderer
-  only supports one console mode.
 
   \emph{Note}: This field is best left empty on most types of firmware.
 
@@ -8316,8 +8359,18 @@ for additional options.
   for GOP memory, even though the CPU supports it. Setting this can give a considerable
   speed-up for GOP operations, especially on systems which require \texttt{DirectGopRendering}.
 
-  \emph{Note}: This takes effect whether or not \texttt{DirectGopRendering} is set, and may
-  give some speed-up to GOP operations even when \texttt{DirectGopRendering} is \texttt{false}.
+  \emph{Note 1}: This quirk takes effect whether or not \texttt{DirectGopRendering} is set, and
+  in some cases may give a noticeable speed-up to GOP operations even when \texttt{DirectGopRendering}
+  is \texttt{false}.
+
+  \emph{Note 2}: On most systems from circa 2013 onwards, write-combining
+  caching is already applied by the firmware to GOP memory, in which case \texttt{GopBurstMode}
+  is unnecessary. On such systems enabling the quirk should normally be harmless, producing an
+  \texttt{OCC:} debug log entry indicating that burst mode is already started.
+
+  \emph{Note 3}: Some caution should be taken when enabling this quirk, as it has been observed
+  to cause hangs on a few systems. Since additional guards have been added to try to prevent this,
+  please log a bugtracker issue if such a system is found.
 
 \item
   \texttt{GopPassThrough}\\
@@ -8345,7 +8398,7 @@ for additional options.
   \textbf{Description}: Some types of firmware output text onscreen in both graphics and
   text mode. This is typically unexpected as random text may appear over
   graphical images and cause UI corruption. Setting this option to \texttt{true} will
-  discard all text output when console control is in a different mode from \texttt{Text}.
+  discard all text output if console control is not in \texttt{Text} mode.
 
   \emph{Note}: This option only applies to the \texttt{System} renderer.
 

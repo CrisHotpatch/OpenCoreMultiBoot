@@ -60,17 +60,26 @@ OcConsoleControlInstallProtocol (
   );
 
 EFI_STATUS
+OcConsoleControlRestoreProtocol (
+  IN EFI_CONSOLE_CONTROL_PROTOCOL  *OldProtocol
+  );
+
+EFI_STATUS
 OcUseBuiltinTextOutput (
-  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  Mode
+  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  InitialMode,
+  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  Mode,
+  IN UINT32                           Width,
+  IN UINT32                           Height
   );
 
 EFI_STATUS
 OcUseSystemTextOutput (
-  IN OC_CONSOLE_RENDERER  Renderer,
-  IN BOOLEAN              IgnoreTextOutput,
-  IN BOOLEAN              SanitiseClearScreen,
-  IN BOOLEAN              ClearScreenOnModeSwitch,
-  IN BOOLEAN              ReplaceTabWithSpace
+  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  InitialMode,
+  IN OC_CONSOLE_RENDERER              Renderer,
+  IN BOOLEAN                          IgnoreTextOutput,
+  IN BOOLEAN                          SanitiseClearScreen,
+  IN BOOLEAN                          ClearScreenOnModeSwitch,
+  IN BOOLEAN                          ReplaceTabWithSpace
   );
 
 #endif // OC_CONSOLE_LIB_INTERNAL_H

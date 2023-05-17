@@ -1,8 +1,30 @@
 OpenCore Changelog
 ==================
+#### v0.9.3
+- Added `--force-codec` option to AudioDxe, thx @xCuri0
+- Downgraded additional warning message in normal operation of emulated NVRAM to info
+- Disabled not present DVL0 device in SSDT-SBUS-MCHC by default, thx @stevezhengshiqi
+
 #### v0.9.2
 - Added `DisableIoMapperMapping` quirk, thx @CaseySJ
 - Fixed disabling single user mode when Apple Secure Boot is enabled
+- Improved guard checks for `GopBurstMode` on systems where it's not needed
+- Improved compatibility of `GopBurstMode` with some very non-standard GOP implementations
+- Fixed possible hang with `GopBurstMode` enabled on DEBUG builds
+- Enabled `GopBurstMode` even with natively supported cards, in EnableGop firmware driver
+- Fixed inability to patch force-injected kexts
+- Fixed `ExternalDiskIcons` quirk on macOS 13.3+, thx @fusion71au
+- Fixed various recent reversions and some longer-standing minor bugs in `Builtin` text renderer
+- Applied some additional minor optimizations to `Builtin` text renderer
+- Implemented `InitialMode` option to allow fine control over text renderer operating mode
+- Added support for `ConsoleMode` text resolution setting to `Builtin` renderer
+- Fixed regression for ACPI quirks `RebaseRegions` and `SyncTableIds`
+- Updated build process to provide stable and bleeding-edge versions of `EnableGop`
+- Implemented minor improvements in `PickerMode` `Apple`
+- Improved filtering algorithm for `LogModules` and added `?` filter for matching non-standard log lines
+- Fixed crash when gathering system report on virtualised CPUs
+- Fixed unnecessary warning when first booting with emulated NVRAM
+- Enabled `AppleCpuPmCfgLock` quirk on macOS 13
 
 #### v0.9.1
 - Fixed long comment printing for ACPI patches, thx @corpnewt
@@ -27,8 +49,8 @@ OpenCore Changelog
 - Fixed incomplete console mode initialisation when started in graphics mode
 - Provided additional UEFI forge mode, for use in firmware drivers
 - Implemented firmware driver enabling pre-OpenCore graphics on non-natively supported GPUs on EFI-era Macs
-- Prevented unwanted clear screen to console background colour when in graphics mode
 - Added `ResizeUsePciRbIo` quirk to workaround broken PciIo on some UEFI firmwares, thx @xCuri0
+- Prevented unwanted clear screen to console background colour when in graphics mode
 - Fixed crash while using `SysReport` on older Atom systems
 - Fixed kexts without a Contents folder not being patched during a cacheless boot
 - Added read-only sections (`.rdata`) to all drivers for better memory protection when supported

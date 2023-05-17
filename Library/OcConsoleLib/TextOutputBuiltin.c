@@ -158,11 +158,15 @@ STATIC UINT32  mGraphicsEfiColors[16] = {
 };
 
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL         *mGraphicsOutput;
+STATIC UINTN                                mConsolePaddingX;
+STATIC UINTN                                mConsolePaddingY;
+STATIC UINTN                                mUserWidth;
+STATIC UINTN                                mUserHeight;
 STATIC UINTN                                mConsoleWidth;
 STATIC UINTN                                mConsoleHeight;
 STATIC UINTN                                mConsoleMaxPosX;
 STATIC UINTN                                mConsoleMaxPosY;
-STATIC BOOLEAN                              mConsoleHasCleared;
+STATIC BOOLEAN                              mConsoleUncontrolled;
 STATIC UINTN                                mPrivateColumn; ///< At least UEFI Shell trashes Mode values.
 STATIC UINTN                                mPrivateRow;    ///< At least UEFI Shell trashes Mode values.
 STATIC UINT32                               mConsoleGopMode;
@@ -172,12 +176,11 @@ STATIC EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION  mForegroundColor;
 STATIC EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION  *mCharacterBuffer;
 STATIC EFI_CONSOLE_CONTROL_SCREEN_MODE      mConsoleMode = EfiConsoleControlScreenText;
 
-#define SCR_PADD           1
 #define TGT_CHAR_WIDTH     ((UINTN)(ISO_CHAR_WIDTH) * mFontScale)
 #define TGT_CHAR_HEIGHT    ((UINTN)(ISO_CHAR_HEIGHT) * mFontScale)
 #define TGT_CHAR_AREA      ((TGT_CHAR_WIDTH) * (TGT_CHAR_HEIGHT))
-#define TGT_PADD_WIDTH     ((TGT_CHAR_WIDTH) * (SCR_PADD))
-#define TGT_PADD_HEIGHT    ((ISO_CHAR_HEIGHT) * (SCR_PADD))
+#define TGT_PADD_WIDTH     (mConsolePaddingX)
+#define TGT_PADD_HEIGHT    (mConsolePaddingY)
 #define TGT_CURSOR_X       mFontScale
 #define TGT_CURSOR_Y       ((TGT_CHAR_HEIGHT) - mFontScale)
 #define TGT_CURSOR_WIDTH   ((TGT_CHAR_WIDTH) - mFontScale*2)
@@ -273,7 +276,7 @@ FlushCursor (
   EFI_STATUS                           Status;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION  Colour;
 
-  if (!Enabled) {
+  if (!Enabled || (mConsoleMode != EfiConsoleControlScreenText)) {
     return;
   }
 
@@ -324,18 +327,21 @@ RenderScroll (
   VOID
   )
 {
+  UINTN  Width;
+
   //
-  // Move data.
+  // Move used screen region.
   //
+  Width = (mConsoleMaxPosX + 1) * TGT_CHAR_WIDTH;
   mGraphicsOutput->Blt (
                      mGraphicsOutput,
                      NULL,
                      EfiBltVideoToVideo,
-                     0,
+                     TGT_PADD_WIDTH,
                      TGT_PADD_HEIGHT + TGT_CHAR_HEIGHT,
-                     0,
+                     TGT_PADD_WIDTH,
                      TGT_PADD_HEIGHT,
-                     mGraphicsOutput->Mode->Info->HorizontalResolution,
+                     Width,
                      TGT_CHAR_HEIGHT * (mConsoleHeight - 1),
                      0
                      );
@@ -349,14 +355,17 @@ RenderScroll (
                      EfiBltVideoFill,
                      0,
                      0,
-                     0,
+                     TGT_PADD_WIDTH,
                      TGT_PADD_HEIGHT + TGT_CHAR_HEIGHT * (mConsoleHeight - 1),
-                     mGraphicsOutput->Mode->Info->HorizontalResolution,
+                     Width,
                      TGT_CHAR_HEIGHT,
                      0
                      );
 }
 
+//
+// Resync - called on detected change of GOP mode and on reset.
+//
 STATIC
 EFI_STATUS
 RenderResync (
@@ -364,11 +373,16 @@ RenderResync (
   )
 {
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Info;
+  UINTN                                 MaxWidth;
+  UINTN                                 MaxHeight;
 
   Info = mGraphicsOutput->Mode->Info;
 
-  if (  (Info->HorizontalResolution < TGT_CHAR_WIDTH * 3)
-     || (Info->VerticalResolution < TGT_CHAR_HEIGHT * 3))
+  //
+  // Require space for at least 1x1 chars on the calculation below.
+  //
+  if (  (Info->HorizontalResolution < TGT_CHAR_WIDTH)
+     || (Info->VerticalResolution   < TGT_CHAR_HEIGHT))
   {
     return EFI_LOAD_ERROR;
   }
@@ -382,16 +396,29 @@ RenderResync (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  mConsoleGopMode    = mGraphicsOutput->Mode->Mode;
-  mConsoleWidth      = (Info->HorizontalResolution / TGT_CHAR_WIDTH)  - 2 * SCR_PADD;
-  mConsoleHeight     = (Info->VerticalResolution   / TGT_CHAR_HEIGHT) - 2 * SCR_PADD;
-  mConsoleMaxPosX    = 0;
-  mConsoleMaxPosY    = 0;
-  mConsoleHasCleared = FALSE;
+  mConsoleGopMode = mGraphicsOutput->Mode->Mode;
+  MaxWidth        = Info->HorizontalResolution / TGT_CHAR_WIDTH;
+  MaxHeight       = Info->VerticalResolution / TGT_CHAR_HEIGHT;
+  if ((mUserWidth == 0) || (mUserHeight == 0)) {
+    mConsoleWidth  = MaxWidth;
+    mConsoleHeight = MaxHeight;
+  } else {
+    mConsoleWidth  = MIN (MaxWidth, mUserWidth);
+    mConsoleHeight = MIN (MaxHeight, mUserHeight);
+  }
+
+  mConsolePaddingX     = (Info->HorizontalResolution - (mConsoleWidth * TGT_CHAR_WIDTH)) / 2;
+  mConsolePaddingY     = (Info->VerticalResolution - (mConsoleHeight * TGT_CHAR_HEIGHT)) / 2;
+  mConsoleMaxPosX      = 0;
+  mConsoleMaxPosY      = 0;
+  mConsoleUncontrolled = FALSE;
 
   mPrivateColumn           = mPrivateRow = 0;
   This->Mode->CursorColumn = This->Mode->CursorRow = 0;
 
+  //
+  // Avoid rendering any console content when in graphics mode.
+  //
   if (mConsoleMode == EfiConsoleControlScreenText) {
     mGraphicsOutput->Blt (
                        mGraphicsOutput,
@@ -595,11 +622,7 @@ AsciiTextTestString (
   )
 {
   if (StrCmp (String, OC_CONSOLE_MARK_UNCONTROLLED) == 0) {
-    mConsoleMaxPosX = mGraphicsOutput->Mode->Info->HorizontalResolution / TGT_CHAR_WIDTH;
-    mConsoleMaxPosY = mGraphicsOutput->Mode->Info->VerticalResolution   / TGT_CHAR_HEIGHT;
-  } else if (StrCmp (String, OC_CONSOLE_MARK_CONTROLLED) == 0) {
-    mConsoleMaxPosX = 0;
-    mConsoleMaxPosX = 0;
+    mConsoleUncontrolled = TRUE;
   }
 
   return EFI_SUCCESS;
@@ -702,11 +725,10 @@ AsciiTextSetAttribute (
     BgColor = BitFieldRead32 ((UINT32)Attribute, 4, 6);
 
     //
-    // Once we change the background we should redraw everything.
+    // Once we change the background colour, any clear screen must cover the whole screen.
     //
     if (mGraphicsEfiColors[BgColor] != mBackgroundColor.Raw) {
-      mConsoleMaxPosX = mConsoleWidth + SCR_PADD;
-      mConsoleMaxPosY = mConsoleHeight + SCR_PADD;
+      mConsoleUncontrolled = TRUE;
     }
 
     mForegroundColor.Raw  = mGraphicsEfiColors[FgColor];
@@ -720,6 +742,11 @@ AsciiTextSetAttribute (
   return EFI_SUCCESS;
 }
 
+//
+// Note: This intentionally performs a partial screen clear, affecting only the
+// area containing text which has been written using our renderer, unless console
+// is marked uncontrolled prior to clearing.
+//
 STATIC
 EFI_STATUS
 EFIAPI
@@ -732,48 +759,71 @@ AsciiTextClearScreen (
   UINTN       Height;
   EFI_TPL     OldTpl;
 
+  //
+  // Note: We stay marked uncontrolled, if staying in graphics mode.
+  //
+  if (mConsoleMode != EfiConsoleControlScreenText) {
+    return EFI_UNSUPPORTED;
+  }
+
   OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
+  //
+  // No need to re-clear screen straight after resync; but note that the initial screen
+  // clear after resync, although of non-zero size, is intentionally very lightweight.
+  //
   if (mConsoleGopMode != mGraphicsOutput->Mode->Mode) {
     Status = RenderResync (This);
     if (EFI_ERROR (Status)) {
       gBS->RestoreTPL (OldTpl);
       return EFI_DEVICE_ERROR;
     }
-  }
-
-  if (mConsoleHasCleared) {
-    //
-    // X coordinate points to the right most coordinate of the last printed
-    // character, but after this character we may also have cursor.
-    // Y coordinate points to the top most coordinate of the last printed row.
-    //
-    Width  = TGT_PADD_WIDTH  + (mConsoleMaxPosX + 1) * TGT_CHAR_WIDTH;
-    Height = TGT_PADD_HEIGHT + (mConsoleMaxPosY + 1) * TGT_CHAR_HEIGHT;
-    Width  = MIN (Width, mGraphicsOutput->Mode->Info->HorizontalResolution);
-    Height = MIN (Height, mGraphicsOutput->Mode->Info->VerticalResolution);
   } else {
     //
-    // Clear full screen at least once when console clear screen is requested
-    // after switch to new mode.
+    // When controlled, we assume that only text which we rendered needs to be cleared.
+    // When marked uncontrolled anyone may have put content (in particular, graphics) anywhere
+    // so always clear full screen.
     //
-    Width              = mGraphicsOutput->Mode->Info->HorizontalResolution;
-    Height             = mGraphicsOutput->Mode->Info->VerticalResolution;
-    mConsoleHasCleared = TRUE;
-  }
+    if (mConsoleUncontrolled) {
+      mGraphicsOutput->Blt (
+                         mGraphicsOutput,
+                         &mBackgroundColor.Pixel,
+                         EfiBltVideoFill,
+                         0,
+                         0,
+                         0,
+                         0,
+                         mGraphicsOutput->Mode->Info->HorizontalResolution,
+                         mGraphicsOutput->Mode->Info->VerticalResolution,
+                         0
+                         );
 
-  mGraphicsOutput->Blt (
-                     mGraphicsOutput,
-                     &mBackgroundColor.Pixel,
-                     EfiBltVideoFill,
-                     0,
-                     0,
-                     0,
-                     0,
-                     Width,
-                     Height,
-                     0
-                     );
+      mConsoleUncontrolled = FALSE;
+    } else {
+      //
+      // mConsoleMaxPosX,Y coordinates are the top left coordinates of the of the greatest
+      // occupied character position. Because there is a cursor, there is always at least
+      // one character position occupied.
+      //
+      Width  = (mConsoleMaxPosX + 1) * TGT_CHAR_WIDTH;
+      Height = (mConsoleMaxPosY + 1) * TGT_CHAR_HEIGHT;
+      ASSERT (TGT_PADD_WIDTH  + Width <= mGraphicsOutput->Mode->Info->HorizontalResolution);
+      ASSERT (TGT_PADD_HEIGHT + Height <= mGraphicsOutput->Mode->Info->VerticalResolution);
+
+      mGraphicsOutput->Blt (
+                         mGraphicsOutput,
+                         &mBackgroundColor.Pixel,
+                         EfiBltVideoFill,
+                         0,
+                         0,
+                         TGT_PADD_WIDTH,
+                         TGT_PADD_HEIGHT,
+                         Width,
+                         Height,
+                         0
+                         );
+    }
+  }
 
   //
   // Handle cursor.
@@ -783,8 +833,12 @@ AsciiTextClearScreen (
   FlushCursor (This->Mode->CursorVisible, mPrivateColumn, mPrivateRow);
 
   //
-  // We do not reset max here, as we may still scroll (e.g. in shell via page buttons).
+  // After clear screen, shell may scroll through old text via page up/down buttons,
+  // but it is okay to reset max x/y here anyway, as any old text is brought on via
+  // full redraw.
   //
+  mConsoleMaxPosX = 0;
+  mConsoleMaxPosY = 0;
 
   gBS->RestoreTPL (OldTpl);
   return EFI_SUCCESS;
@@ -910,7 +964,13 @@ ConsoleControlSetMode (
 {
   if (mConsoleMode != Mode) {
     mConsoleMode = Mode;
-    if (mConsoleMode == EfiConsoleControlScreenText) {
+
+    //
+    // If controlled, switching to graphics then back to text should change nothing.
+    //
+    if (  (mConsoleMode == EfiConsoleControlScreenText)
+       && mConsoleUncontrolled)
+    {
       gST->ConOut->ClearScreen (gST->ConOut);
     }
   }
@@ -937,45 +997,17 @@ EFI_CONSOLE_CONTROL_PROTOCOL
   ConsoleControlLockStdIn
 };
 
-VOID
-ConsoleControlInstall (
-  VOID
+EFI_STATUS
+OcUseBuiltinTextOutput (
+  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  InitialMode,
+  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  Mode,
+  IN UINT32                           Width,
+  IN UINT32                           Height
   )
 {
   EFI_STATUS                    Status;
-  EFI_CONSOLE_CONTROL_PROTOCOL  *ConsoleControl;
-
-  Status = OcHandleProtocolFallback (
-             &gST->ConsoleOutHandle,
-             &gEfiConsoleControlProtocolGuid,
-             (VOID *)&ConsoleControl
-             );
-
-  if (!EFI_ERROR (Status)) {
-    ConsoleControl->SetMode (ConsoleControl, EfiConsoleControlScreenGraphics);
-
-    CopyMem (
-      ConsoleControl,
-      &mConsoleControlProtocol,
-      sizeof (mConsoleControlProtocol)
-      );
-  }
-
-  gBS->InstallMultipleProtocolInterfaces (
-         &gST->ConsoleOutHandle,
-         &gEfiConsoleControlProtocolGuid,
-         &mConsoleControlProtocol,
-         NULL
-         );
-}
-
-EFI_STATUS
-OcUseBuiltinTextOutput (
-  IN EFI_CONSOLE_CONTROL_SCREEN_MODE  Mode
-  )
-{
-  EFI_STATUS  Status;
-  UINTN       UiScaleSize;
+  UINTN                         UiScaleSize;
+  EFI_CONSOLE_CONTROL_PROTOCOL  OriginalConsoleControlProtocol;
 
   UiScaleSize = sizeof (mFontScale);
 
@@ -991,23 +1023,27 @@ OcUseBuiltinTextOutput (
     mFontScale = 1;
   }
 
-  DEBUG ((DEBUG_INFO, "OCC: Using builtin text renderer scale %u mode %u\n", mFontScale, Mode));
+  DEBUG ((DEBUG_INFO, "OCC: Using builtin text renderer with %d scale\n", mFontScale));
 
-  mConsoleMode = Mode;
-  Status       = AsciiTextResetEx (&mAsciiTextOutputProtocol, TRUE, TRUE);
-
+  mUserWidth   = Width;
+  mUserHeight  = Height;
+  mConsoleMode = InitialMode;
+  OcConsoleControlSetMode (Mode);
+  Status = OcConsoleControlInstallProtocol (&mConsoleControlProtocol, &OriginalConsoleControlProtocol, NULL); ///< Produces o/p using old, uncontrolled text protocol
   if (!EFI_ERROR (Status)) {
-    OcConsoleControlInstallProtocol (&mConsoleControlProtocol, NULL, NULL);
-    OcConsoleControlSetMode (Mode);
+    Status = AsciiTextResetEx (&mAsciiTextOutputProtocol, TRUE, TRUE); ///< Prepare new text protocol (sets new font size, clears screen)
+    if (EFI_ERROR (Status)) {
+      OcConsoleControlRestoreProtocol (&OriginalConsoleControlProtocol);
+    } else {
+      gST->ConOut    = &mAsciiTextOutputProtocol; ///< Install new text protocol
+      gST->Hdr.CRC32 = 0;
 
-    gST->ConOut    = &mAsciiTextOutputProtocol;
-    gST->Hdr.CRC32 = 0;
-
-    gBS->CalculateCrc32 (
-           gST,
-           gST->Hdr.HeaderSize,
-           &gST->Hdr.CRC32
-           );
+      gBS->CalculateCrc32 (
+             gST,
+             gST->Hdr.HeaderSize,
+             &gST->Hdr.CRC32
+             );
+    }
   }
 
   DEBUG ((DEBUG_INFO, "OCC: Setup ASCII Output - %r\n", Status));

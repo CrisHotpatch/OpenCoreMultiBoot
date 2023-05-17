@@ -872,7 +872,7 @@ OcMiscBoot (
   // Due to the file size and sanity guarantees OcXmlLib makes,
   // adding Counts cannot overflow.
   //
-  if (!OcOverflowMulAddUN (
+  if (!BaseOverflowMulAddUN (
          sizeof (OC_PICKER_ENTRY),
          Config->Misc.Entries.Count + Config->Misc.Tools.Count,
          sizeof (OC_PICKER_CONTEXT),
@@ -890,7 +890,7 @@ OcMiscBoot (
   }
 
   if (Config->Misc.BlessOverride.Count > 0) {
-    if (!OcOverflowMulUN (
+    if (!BaseOverflowMulUN (
            Config->Misc.BlessOverride.Count,
            sizeof (*BlessOverride),
            &BlessOverrideSize

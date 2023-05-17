@@ -169,9 +169,9 @@ ifneq ($(STANDALONE),1)
 	#
 	OBJS    += UserBaseMemoryLib.o UserBootServices.o UserGlobalVar.o UserMath.o UserMisc.o UserPcd.o UserUnicodeCollation.o UserOcDummy.o
 	#
-	# OcGuardLib targets.
+	# BaseOverflowLib targets.
 	#
-	OBJS    += BitOverflow.o NativeOverflow.o TripleOverflow.o Alignment.o
+	OBJS    += BaseMath.o BaseBitOverflow.o BaseNativeOverflow.o BaseTripleOverflow.o BaseAlignment.o
 	#
 	# OcSerializeLib targets.
 	#
@@ -207,7 +207,7 @@ ifneq ($(STANDALONE),1)
 	#
 	# OcMiscLib targets.
 	#
-	OBJS    += Math.o ProtocolSupport.o DataPatcher.o PlatformInfo.o
+	OBJS    += ProtocolSupport.o DataPatcher.o PlatformInfo.o
 	#
 	# OcAppleKernelLib targets.
 	#
@@ -231,6 +231,7 @@ ifneq ($(STANDALONE),1)
 				$(UDK_PATH)/MdePkg/Library/BaseDebugPrintErrorLevelLib:$\
 				$(UDK_PATH)/MdePkg/Library/UefiDebugLibConOut:$\
 				$(UDK_PATH)/MdePkg/Library/BasePrintLib:$\
+				$(UDK_PATH)/MdePkg/Library/BaseOverflowLib:$\
 				$(UDK_PATH)/MdePkg/Library/BaseSafeIntLib:$\
 				$(UDK_PATH)/MdePkg/Library/BasePciLibPciExpress:$\
 				$(UDK_PATH)/MdePkg/Library/BasePciExpressLib:$\
@@ -240,7 +241,6 @@ ifneq ($(STANDALONE),1)
 				$(UDK_PATH)/MdeModulePkg/Library/CommonMemoryAllocationLib:$\
 				$(UDK_PATH)/MdeModulePkg/Library/UefiSortLib:$\
 				$(UDK_PATH)/UefiCpuPkg/Library/MtrrLib:$\
-				$(OC_USER)/Library/OcGuardLib:$\
 				$(OC_USER)/Library/OcSerializeLib:$\
 				$(OC_USER)/Library/OcTemplateLib:$\
 				$(OC_USER)/Library/OcXmlLib:$\
