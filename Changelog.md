@@ -4,6 +4,13 @@ OpenCore Changelog
 - Added `--force-codec` option to AudioDxe, thx @xCuri0
 - Downgraded additional warning message in normal operation of emulated NVRAM to info
 - Disabled not present DVL0 device in SSDT-SBUS-MCHC by default, thx @stevezhengshiqi
+- Added Unicode font pages for some accented characters, plus box drawing and block elements, to `Builtin` text renderer
+- Improved support for overlong menu entries and very narrow console modes in builtin picker
+- Made `Builtin` text renderer ignore UI Scale, when required to ensure that text mode reaches minimum UEFI supported size of 80x25
+- Added save and restore of text and graphics mode round tools and failed boot entries
+- Updated out-of-range cursor handling to work round minor display issue in memtest86
+- Added optional `--enable-mouse-click` argument to `CrScreenshotDxe` driver to additionally respond on mouse click
+- Added `--use-conn-none` option to `AudioDxe` driver to discover additional usable output channels on some systems
 
 #### v0.9.2
 - Added `DisableIoMapperMapping` quirk, thx @CaseySJ
@@ -78,7 +85,7 @@ OpenCore Changelog
 - Fixed TSC/FSB for AMD CPUs in ProvideCurrentCpuInfo, thx @Shaneee
 - Added `Misc` -> `Boot` -> `HibernateSkipsPicker` not to show picker if waking from macOS hibernation
 - Changed macrecovery to download files into `com.apple.recovery.boot` by default, thx @dreamwhite
-- Supported Apple builtin picker (using `BootKicker.efi` or `PickerMode` `Apple`) when running GPUs without Mac-EFI support on units such as the MacPro5,1 (thx @cdf, @tsialex)
+- Supported Apple native picker (using `BootKicker.efi` or `PickerMode` `Apple`) when running GPUs without Mac-EFI support on units such as the MacPro5,1 (thx @cdf, @tsialex)
 - Enabled `PickerMode` `Apple` to successfully launch selected entry
 - Enabled `BootKicker.efi` to successfully launch selected entry (via reboot) (thx @cdf)
 - Added spoof proof UEFI 2.x checking to OpenVariableRuntimeDxe, thx @dakanji
