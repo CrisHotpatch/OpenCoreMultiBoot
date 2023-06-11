@@ -1,7 +1,7 @@
 \documentclass[]{article}
 %DIF LATEXDIFF DIFFERENCE FILE
 %DIF DEL PreviousConfiguration.tex   Wed May 10 20:45:31 2023
-%DIF ADD ../Configuration.tex        Sat May 20 08:58:22 2023
+%DIF ADD ../Configuration.tex        Sun Jun 11 05:44:24 2023
 
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
@@ -7160,7 +7160,8 @@ the driver within the \texttt{UEFI/Drivers} section:
   be reversed on exit in order to avoid breaking sound in Windows or Linux. If so, this flag should
   be added to AudioDxe driver arguments.
   Not enabled by default, since restoring the flag can prevent sound from working in macOS on
-  some other systems\DIFaddbegin \DIFadd{. }\medskip
+  some other systems. \medskip
+\DIFaddbegin 
 
 	\item \texttt{\DIFadd{-}{}\DIFadd{-use-conn-none}} \DIFadd{- Boolean flag, enabled if present. }\medskip
 
@@ -7169,9 +7170,9 @@ the driver within the \texttt{UEFI/Drivers} section:
   }\medskip
 
   \emph{\DIFadd{Note}}\DIFadd{: Enabling this option may increase the available channels, in which case any
-  custom setting of }\texttt{\DIFadd{AudioOutMask}} \DIFadd{may need to be changed to match the new channel list}\DIFaddend .
-  \medskip
-\end{itemize}
+  custom setting of }\texttt{\DIFadd{AudioOutMask}} \DIFadd{may need to be changed to match the new channel list.
+  }\medskip
+\DIFaddend \end{itemize}
 
 \subsection{OpenVariableRuntimeDxe}\label{emunvram}
 
@@ -8288,7 +8289,49 @@ for additional options.
   \href{https://github.com/acidanthera/bugtracker/issues/1280}{firmware upgrades}.
 
 \item
-  \texttt{ConsoleMode}\\
+  \DIFaddbegin \texttt{\DIFadd{ConsoleFont}}\\
+  \textbf{\DIFadd{Type}}\DIFadd{: }\texttt{\DIFadd{plist\ string}}\\
+  \textbf{\DIFadd{Failsafe}}\DIFadd{: Empty (use OpenCore builtin console font)}\\
+  \textbf{\DIFadd{Description}}\DIFadd{: Specify the console font to use for OpenCore }\texttt{\DIFadd{Builtin}} \DIFadd{text renderer.
+}
+
+  \DIFadd{The font file must be located in }\texttt{\DIFadd{EFI/OC/Resources/Font/\{font-name\}.hex}} \DIFadd{and must
+  be 8x16 resolution. Various console fonts can be found online in either }\texttt{\DIFadd{.bdf}} \DIFadd{or
+  }\texttt{\DIFadd{.hex}} \DIFadd{format. }\texttt{\DIFadd{.bdf}} \DIFadd{can be converted to }\texttt{\DIFadd{.hex}} \DIFadd{format using }\texttt{\DIFadd{gbdfed}}
+  \DIFadd{(available for Linux or macOS).
+}
+
+  \DIFadd{There is often no need to change console font, the main use-case being to
+  provide an extended character set for those relatively rare EFI applications which
+  have multi-lingual support (e.g. }\texttt{\DIFadd{memtest86}}\DIFadd{).
+}
+
+  \DIFadd{The }\href{https://github.com/acidanthera/OcBinaryData}{\DIFadd{OcBinaryData repository}} \DIFadd{includes:
+  }\begin{itemize}
+    \tightlist
+    \item \href{https://terminus-font.sourceforge.net/}{\DIFadd{Terminus}} \DIFadd{--- A font with extensive character
+    support suitable for applications such as the above.
+    }\item \DIFadd{TerminusCore --- A lightly modified version of the Terminus font, making some glyphs
+    (}\texttt{\DIFadd{@KMRSTVWimrsw}}\DIFadd{) more similar to the free ISO Latin font used in XNU and OpenCore.
+  }\end{itemize}
+
+  \texttt{\DIFadd{Terminus}} \DIFadd{and }\texttt{\DIFadd{TerminusCore}} \DIFadd{are provided under the SIL Open Font License, Version 1.1.
+  Some additional GPL licensed fonts from the EPTO Fonts library, converted
+  to the required }\texttt{\DIFadd{.hex}} \DIFadd{format, can be found }\href{https://github.com/mikebeaton/epto-fonts}{\DIFadd{here}}\DIFadd{.
+}
+
+  \emph{\DIFadd{Note 1}}\DIFadd{: On many newer systems the }\texttt{\DIFadd{System}} \DIFadd{text renderer already provides a full
+  set of international characters, in which case this can be used without requiring the }\texttt{\DIFadd{Builtin}}
+  \DIFadd{renderer and a custom font.
+}
+
+  \emph{\DIFadd{Note 2}}\DIFadd{: This option only affects the }\texttt{\DIFadd{Builtin}} \DIFadd{text renderer and only takes effect from
+  the point at which the }\texttt{\DIFadd{Builtin}} \DIFadd{renderer is configured. When console output is visible before
+  this point, it is using the system console font.
+}
+
+\item
+  \DIFaddend \texttt{ConsoleMode}\\
   \textbf{Type}: \texttt{plist\ string}\\
   \textbf{Failsafe}: Empty (Maintain current console mode)\\
   \textbf{Description}: Sets console output mode as specified
@@ -8693,7 +8736,17 @@ for additional options.
   \textbf{Failsafe}: \texttt{false}\\
   \textbf{Description}: Replaces the OS Info protocol with a builtin
   version. This protocol is typically used by the firmware and other
-  applications to receive notifications from the macOS bootloader.
+  applications to receive notifications from the macOS bootloader\DIFaddbegin \DIFadd{.
+}
+
+\item
+  \texttt{\DIFadd{PciIo}}\\
+  \textbf{\DIFadd{Type}}\DIFadd{: }\texttt{\DIFadd{plist\ boolean}}\\
+  \textbf{\DIFadd{Failsafe}}\DIFadd{: }\texttt{\DIFadd{false}}\\
+  \textbf{\DIFadd{Description}}\DIFadd{: Replaces functions in CpuIo and PciRootBridgeIo with
+  64-bit MMIO compatible ones to fix }\texttt{\DIFadd{Invalid Parameter}} \DIFadd{when using 4G Decoding.
+  This affects UEFI drivers such as }\texttt{\DIFadd{AudioDxe}} \DIFadd{which access 64-bit MMIO devices.
+  Platforms earlier than APTIO V (Haswell and older) are typically affected}\DIFaddend .
 
 \item
   \texttt{UnicodeCollation}\\
