@@ -809,6 +809,7 @@ OcMiscBoot (
   CHAR16                  **BlessOverride;
   CONST CHAR8             *AsciiPicker;
   CONST CHAR8             *AsciiPickerVariant;
+  CONST CHAR8             *AsciiInstanceIdentifier;
   CONST CHAR8             *AsciiDmg;
 
   AsciiPicker = OC_BLOB_GET (&Config->Misc.Boot.PickerMode);
@@ -824,7 +825,8 @@ OcMiscBoot (
     PickerMode = OcPickerModeBuiltin;
   }
 
-  AsciiPickerVariant = OC_BLOB_GET (&Config->Misc.Boot.PickerVariant);
+  AsciiPickerVariant      = OC_BLOB_GET (&Config->Misc.Boot.PickerVariant);
+  AsciiInstanceIdentifier = OC_BLOB_GET (&Config->Misc.Boot.InstanceIdentifier);
 
   AsciiDmg = OC_BLOB_GET (&Config->Misc.Security.DmgLoading);
 
@@ -953,6 +955,7 @@ OcMiscBoot (
   Context->ConsoleAttributes    = Config->Misc.Boot.ConsoleAttributes;
   Context->PickerAttributes     = Config->Misc.Boot.PickerAttributes;
   Context->PickerVariant        = AsciiPickerVariant;
+  Context->InstanceIdentifier   = AsciiInstanceIdentifier;
   Context->BlacklistAppleUpdate = Config->Misc.Security.BlacklistAppleUpdate;
 
   if ((Config->Misc.Security.ExposeSensitiveData & OCS_EXPOSE_VERSION_UI) != 0) {
