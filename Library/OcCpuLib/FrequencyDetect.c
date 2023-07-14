@@ -17,14 +17,18 @@
 #include <Guid/OcVariable.h>
 #include <Guid/AppleHob.h>
 #include <Guid/ApplePlatformInfo.h>
+#include <Guid/AcpiDescription.h>
 #include <IndustryStandard/CpuId.h>
 #include <IndustryStandard/GenericIch.h>
 #include <IndustryStandard/McpMemoryController.h>
 #include <Protocol/PciIo.h>
+#include <Pi/PiBootMode.h>
+#include <Pi/PiHob.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseOverflowLib.h>
 #include <Library/DebugLib.h>
+#include <Library/HobLib.h>
 #include <Library/IoLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/OcCpuLib.h>
@@ -43,8 +47,10 @@ InternalGetPmTimerAddr (
   OUT CONST CHAR8  **Type  OPTIONAL
   )
 {
-  UINTN   TimerAddr;
-  UINT32  CpuVendor;
+  UINTN                 TimerAddr;
+  UINT32                CpuVendor;
+  EFI_HOB_GUID_TYPE     *HobAcpiDescription;
+  EFI_ACPI_DESCRIPTION  *AcpiDescription;
 
   TimerAddr = 0;
 
@@ -73,7 +79,12 @@ InternalGetPmTimerAddr (
     // but it is referred to as PMC I/O space, and the addressing is done through BAR2.
     // In addition to that on B360 and friends PMC controller may be just missing.
     //
-    if ((PciRead8 (PCI_ICH_LPC_ADDRESS (R_ICH_LPC_ACPI_CNTL)) & B_ICH_LPC_ACPI_CNTL_ACPI_EN) != 0) {
+    if ((PciRead16 (PCI_ICH_LPC_ADDRESS (2)) == V_VLV_PMC_PCI_DEVICE_ID) || (PciRead16 (PCI_ICH_LPC_ADDRESS (2)) == V_CHT_PMC_PCI_DEVICE_ID)) {
+      TimerAddr = (PciRead32 (PCI_ICH_LPC_ADDRESS (R_BRSW_PMC_ACPI_BASE)) & B_BRSW_PMC_ACPI_BASE_BAR) + R_ACPI_PM1_TMR;
+      if (Type != NULL) {
+        *Type = "Braswell PMC";
+      }
+    } else if ((PciRead8 (PCI_ICH_LPC_ADDRESS (R_ICH_LPC_ACPI_CNTL)) & B_ICH_LPC_ACPI_CNTL_ACPI_EN) != 0) {
       TimerAddr = (PciRead16 (PCI_ICH_LPC_ADDRESS (R_ICH_LPC_ACPI_BASE)) & B_ICH_LPC_ACPI_BASE_BAR) + R_ACPI_PM1_TMR;
       if (Type != NULL) {
         *Type = "LPC";
@@ -127,6 +138,26 @@ InternalGetPmTimerAddr (
                     );
       if (Type != NULL) {
         *Type = "AMD";
+      }
+    }
+  }
+
+  //
+  // Fallback to ACPI table HOB installed by DUET.
+  //
+  if (TimerAddr == 0) {
+    //
+    // Get ACPI description HOB.
+    //
+    HobAcpiDescription = GetFirstGuidHob (&gEfiAcpiDescriptionGuid);
+    if (HobAcpiDescription != NULL) {
+      if (sizeof (EFI_ACPI_DESCRIPTION) >= GET_GUID_HOB_DATA_SIZE (HobAcpiDescription)) {
+        AcpiDescription = (EFI_ACPI_DESCRIPTION *)GET_GUID_HOB_DATA (HobAcpiDescription);
+
+        TimerAddr = (UINTN)AcpiDescription->PM_TMR_BLK.Address;
+        if (Type != NULL) {
+          *Type = "ACPI HOB";
+        }
       }
     }
   }
