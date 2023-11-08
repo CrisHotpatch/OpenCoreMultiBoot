@@ -257,6 +257,28 @@ For example, this is a working `launch.json` file for both LLDB and GDB debuggin
             }
         },
         {
+            "name": "OC lldb (32/32)",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x86",
+            "program": "${workspaceFolder}/Debug/GdbSyms/Bin/Ia32_XCODE5/GdbSyms.dll",
+            "cwd": "${workspaceFolder}/Debug",
+            "MIMode": "lldb",
+            "customLaunchSetupCommands": [
+                {"text": "gdb-remote localhost:8832"},
+                {"text": "target create GdbSyms/Bin/Ia32_XCODE5/GdbSyms.dll", "ignoreFailures": true},
+                {"text": "command script import Scripts/lldb_uefi.py"},
+                {"text": "command script add -c lldb_uefi.ReloadUefi reload-uefi"},
+                {"text": "reload-uefi"},
+            ],
+            "launchCompleteCommand": "exec-continue",
+            "logging": {
+                "engineLogging": false,
+                "trace": true,
+                "traceResponse": true
+            }
+        },
+        {
             "name": "OC gdb",
             "type": "cppdbg",
             "request": "launch",
@@ -269,6 +291,29 @@ For example, this is a working `launch.json` file for both LLDB and GDB debuggin
                 {"text": "set arch i386:x86-64:intel"},
                 {"text": "symbol-file ${workspaceFolder}/Debug/GdbSyms/Bin/X64_GCC5/GdbSyms.debug"},
                 {"text": "target remote localhost:8864"},
+                {"text": "source ${workspaceFolder}/Debug/Scripts/gdb_uefi.py"},
+                {"text": "reload-uefi"},
+            ],
+            "launchCompleteCommand": "exec-continue",
+            "logging": {
+                "engineLogging": false,
+                "trace": true,
+                "traceResponse": true
+            }
+        },
+        {
+            "name": "OC gdb (32/32)",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x86",
+            "program": "${workspaceFolder}/Debug/GdbSyms/Bin/Ia32_GCC5/GdbSyms.debug",
+            "cwd": "${workspaceFolder}/Debug",
+            "MIMode": "gdb",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {"text": "set arch i386"},
+                {"text": "symbol-file ${workspaceFolder}/Debug/GdbSyms/Bin/Ia32_GCC5/GdbSyms.debug"},
+                {"text": "target remote localhost:8832"},
                 {"text": "source ${workspaceFolder}/Debug/Scripts/gdb_uefi.py"},
                 {"text": "reload-uefi"},
             ],
