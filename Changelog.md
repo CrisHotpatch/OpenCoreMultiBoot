@@ -2,6 +2,9 @@ OpenCore Changelog
 ==================
 #### v0.9.7
 - Updated recovery_urls.txt
+- Changed OpenDuet to enforce `W^X` settings rather than fixing them in loaded images
+- Updated `FixupAppleEfiImages` quirk to fix `W^X` errors in all non-Secure Boot Apple signed binaries
+- Updated builtin firmware versions for SMBIOS and the rest
 
 #### v0.9.6
 - Updated builtin firmware versions for SMBIOS and the rest
