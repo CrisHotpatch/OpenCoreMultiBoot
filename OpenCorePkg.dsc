@@ -184,7 +184,7 @@
   MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf {
     <LibraryClasses>
       !if $(TARGET) == RELEASE
-        DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+        DebugLib|OpenCorePkg/Library/OcDebugLibNull/OcDebugLibNull.inf
       !endif
   }
   MdeModulePkg/Bus/Isa/Ps2MouseDxe/Ps2MouseDxe.inf
@@ -321,6 +321,7 @@
       DebugLib|OpenCorePkg/Library/OcDebugLibNull/OcDebugLibNull.inf
       NULL|OpenCorePkg/Library/OcVariableRuntimeLib/OcVariableRuntimeLib.inf
   }
+  OpenCorePkg/Platform/FirmwareSettingsEntry/FirmwareSettingsEntry.inf
   OpenCorePkg/Platform/ResetNvramEntry/ResetNvramEntry.inf
   OpenCorePkg/Platform/ToggleSipEntry/ToggleSipEntry.inf
   OpenCorePkg/Staging/AudioDxe/AudioDxe.inf

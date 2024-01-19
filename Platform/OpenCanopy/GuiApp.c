@@ -46,7 +46,8 @@ CONST CHAR8 *
   [LABEL_RESET_NVRAM]        = "ResetNVRAM",
   [LABEL_SHELL]              = "Shell",
   [LABEL_SIP_IS_ENABLED]     = "SIPEnabled",
-  [LABEL_SIP_IS_DISABLED]    = "SIPDisabled"
+  [LABEL_SIP_IS_DISABLED]    = "SIPDisabled",
+  [LABEL_FIRMWARE_SETTINGS]  = "FirmwareSettings"
 };
 
 STATIC
@@ -402,11 +403,14 @@ InternalContextConstruct (
   UINT32                             ImageHeight;
   BOOLEAN                            Result;
   BOOLEAN                            AllowLessSize;
+  BOOLEAN                            UseGenericLabel;
 
   ASSERT (Context != NULL);
 
   Context->Scale = 1;
   UiScaleSize    = sizeof (Context->Scale);
+
+  UseGenericLabel = (Picker->PickerAttributes & OC_ATTR_USE_GENERIC_LABEL_IMAGE) != 0;
 
   Status = gRT->GetVariable (
                   APPLE_UI_SCALE_VARIABLE_NAME,
@@ -596,18 +600,22 @@ InternalContextConstruct (
   }
 
   for (Index = 0; Index < LABEL_NUM_TOTAL; ++Index) {
-    Status = LoadLabelFromStorage (
-               Storage,
-               mLabelNames[Index],
-               Context->Scale,
-               Context->LightBackground,
-               &Context->Labels[Index]
-               );
-    if (EFI_ERROR (Status)) {
+    if (!UseGenericLabel) {
       Context->Labels[Index].Buffer = NULL;
-      DEBUG ((DEBUG_WARN, "OCUI: Failed to load images\n"));
-      InternalContextDestruct (Context);
-      return EFI_UNSUPPORTED;
+    } else {
+      Status = LoadLabelFromStorage (
+                 Storage,
+                 mLabelNames[Index],
+                 Context->Scale,
+                 Context->LightBackground,
+                 &Context->Labels[Index]
+                 );
+      if (EFI_ERROR (Status)) {
+        Context->Labels[Index].Buffer = NULL;
+        DEBUG ((DEBUG_WARN, "OCUI: Failed to load images\n"));
+        InternalContextDestruct (Context);
+        return EFI_UNSUPPORTED;
+      }
     }
   }
 
