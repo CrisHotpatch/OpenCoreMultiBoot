@@ -1,7 +1,7 @@
 \documentclass[]{article}
 %DIF LATEXDIFF DIFFERENCE FILE
-%DIF DEL PreviousConfiguration.tex   Thu Oct 10 12:37:13 2024
-%DIF ADD ../Configuration.tex        Thu Oct 10 12:37:13 2024
+%DIF DEL PreviousConfiguration.tex   Sat Nov  9 05:47:31 2024
+%DIF ADD ../Configuration.tex        Wed Nov 20 08:35:03 2024
 
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
@@ -118,7 +118,7 @@
 %DIF HYPERREF PREAMBLE %DIF PREAMBLE
 \providecommand{\DIFadd}[1]{\texorpdfstring{\DIFaddtex{#1}}{#1}} %DIF PREAMBLE
 \providecommand{\DIFdel}[1]{\texorpdfstring{\DIFdeltex{#1}}{}} %DIF PREAMBLE
-%DIF LISTINGS PREAMBLE %DIF PREAMBLE
+%DIF COLORLISTINGS PREAMBLE %DIF PREAMBLE
 \RequirePackage{listings} %DIF PREAMBLE
 \RequirePackage{color} %DIF PREAMBLE
 \lstdefinelanguage{DIFcode}{ %DIF PREAMBLE
@@ -3448,7 +3448,7 @@ the default boot entry choice will remain changed until the next manual reconfig
   Refer to the \hyperref[miscentryprops]{Entry Properties} section below for details.
 
   \emph{Note}: Certain UEFI tools, such as UEFI Shell, can be very dangerous and
-  \textbf{MUST NOT} appear in production configurations, paticularly in vaulted
+  \textbf{MUST NOT} appear in production configurations, \DIFdelbegin \DIFdel{paticularly }\DIFdelend \DIFaddbegin \DIFadd{particularly }\DIFaddend in vaulted
   configurations as well as those protected by secure boot, as such tools can be
   used to bypass the secure boot chain.
   Refer to the \hyperref[uefitools]{UEFI} section for examples of UEFI tools.
@@ -3762,7 +3762,7 @@ the default boot entry choice will remain changed until the next manual reconfig
       \item For security reasons \texttt{Ext<Flavour>.icns} and \texttt{<Flavour>.icns} are both
       supported, and only \texttt{Ext<Flavour>.icns} will be used if the entry is on an external drive
       (followed by default fallback \texttt{ExtHardDrive.icns}).
-      \item Where both apply \texttt{.VolumeIcon.icns} takes precence over \texttt{.contentFlavour}.
+      \item Where both apply \texttt{.VolumeIcon.icns} takes \DIFdelbegin \DIFdel{precence }\DIFdelend \DIFaddbegin \DIFadd{precedence }\DIFaddend over \texttt{.contentFlavour}.
       \item In order to allow icons and audio assist to work correctly for tools (e.g. for UEFI Shell),
       system default boot entry icons (see \texttt{Docs/Flavours.md}) specified in the \texttt{Flavour}
       setting for \texttt{Tools} or \texttt{Entries} will continue to apply even when flavour is disabled.
@@ -3872,7 +3872,7 @@ the default boot entry choice will remain changed until the next manual reconfig
   \emph{will reboot} before the chosen entry is booted. While this behaviour might seem surprising,
   it can be used both to switch which OpenCore installation is blessed, with \texttt{CTRL+Enter},
   e.g. from a recovery OpenCore installation on CD (selected with the \texttt{C} key on boot) back
-  to the main installion of OpenCore on the hard drive, if this is lost after an NVRAM reset. It can
+  to the main \DIFdelbegin \DIFdel{installion }\DIFdelend \DIFaddbegin \DIFadd{installation }\DIFaddend of OpenCore on the hard drive, if this is lost after an NVRAM reset. It can
   also be used, even when the native picker cannot be shown normally (unsupported GPU), to do a one-shot
   boot without OpenCore, e.g. to another OS or tool, or to an earlier version of macOS.
 
@@ -4774,7 +4774,8 @@ nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-board   # SMBIOS Type2 ProductNam
   \begin{itemize}
   \tightlist
   \item Provide public key during the \texttt{OpenCore.efi} compilation in
-  \href{https://github.com/acidanthera/OpenCorePkg/blob/master/Platform/OpenCore/OpenCoreVault.c}{\texttt{OpenCoreVault.c}} file.
+  \DIFdelbegin %DIFDELCMD < \href{https://github.com/acidanthera/OpenCorePkg/blob/master/Platform/OpenCore/OpenCoreVault.c}{%%%
+\DIFdelend \DIFaddbegin \href{https://github.com/acidanthera/OpenCorePkg/blob/master/Library/OcMainLib/OpenCoreVault.c}{\DIFaddend \texttt{OpenCoreVault.c}} file.
   \item Binary patch \texttt{OpenCore.efi} replacing zeroes with the public key
   between \texttt{=BEGIN OC VAULT=} and \texttt{==END OC VAULT==} ASCII markers.
   \end{itemize}
@@ -6928,7 +6929,7 @@ specified before OpenLinuxBoot will attempt to start the distro.
 OpenLinuxBoot typically requires filesystem drivers that are not available in
 firmware, such as EXT4 and BTRFS drivers. These drivers can be obtained from external sources.
 Drivers tested in basic scenarios can be downloaded from \href{https://github.com/acidanthera/OcBinaryData}{OcBinaryData}.
-Be aware that these drivers are not tested for reliability in all scenarious, nor did they undergo
+Be aware that these drivers are not tested for reliability in all \DIFdelbegin \DIFdel{scenarious}\DIFdelend \DIFaddbegin \DIFadd{scenarios}\DIFaddend , nor did they undergo
 tamper-resistance testing, therefore they may carry potential security or data-loss risks.
 
 Most Linux distros require the \href{https://github.com/acidanthera/OcBinaryData}{\texttt{ext4\_x64}} driver,
@@ -6980,7 +6981,8 @@ options for the driver may be specified in \texttt{UEFI/Drivers/Arguments}:
   \begin{itemize}
   \tightlist
     \item \texttt{LINUX\_BOOT\_ADD\_RW},
-    \item \texttt{LINUX\_BOOT\_LOG\_VERBOSE} and
+    \item \texttt{LINUX\_BOOT\_LOG\_VERBOSE}\DIFaddbegin \DIFadd{,
+    }\item \texttt{\DIFadd{LINUX\_BOOT\_LOG\_GRUB\_VARS}} \DIFaddend and
     \item \texttt{LINUX\_BOOT\_ADD\_DEBUG\_INFO}.
   \end{itemize}
   \medskip
@@ -7034,8 +7036,9 @@ options for the driver may be specified in \texttt{UEFI/Drivers/Arguments}:
     Some distributions run a filesystem check on loading which requires the root
     filesystem to initially be mounted read-only via the \texttt{ro} kernel option, which requires this
     option to be added to the autodetected options. Set this bit to add this
-    option on autodetected distros; should be harmless but very slightly slow down boot time (due to requried
-    remount as read-write) on distros which do not require it.
+    option on autodetected distros; should be harmless but very slightly slow down boot time (due to \DIFdelbegin \DIFdel{requried
+    }\DIFdelend \DIFaddbegin \DIFadd{required
+    }\DIFaddend remount as read-write) on distros which do not require it.
     When there are multiple distros and it is required to specify this option for specific distros only, use
     \texttt{autoopts:\{PARTUUID\}+=ro} to manually add the option where required, instead of using this flag.
 
@@ -7061,7 +7064,18 @@ options for the driver may be specified in \texttt{UEFI/Drivers/Arguments}:
     partition's unique partition uuid, to each generated entry name. Can help with debugging
     the origin of entries generated by the driver when there are multiple Linux installs on
     one system.
-  \end{itemize} \medskip
+    \DIFaddbegin \item \texttt{\DIFadd{0x00010000}} \DIFadd{(bit }\texttt{\DIFadd{16}}\DIFadd{) --- }\texttt{\DIFadd{LINUX\_BOOT\_LOG\_GRUB\_VARS}}\DIFadd{,
+    When a }\texttt{\DIFadd{BootLoaderSpecByDefault}} \DIFadd{setup is detected, log available GRUB variables
+    found in }\texttt{\DIFadd{grub2/grubenv}} \DIFadd{and }\texttt{\DIFadd{grub2/grub.cfg}}\DIFadd{.
+    }\item \texttt{\DIFadd{0x00020000}} \DIFadd{(bit }\texttt{\DIFadd{17}}\DIFadd{) --- }\texttt{\DIFadd{LINUX\_BOOT\_FIX\_TUNED}}\DIFadd{,
+    In some circumstances, such as after upgrades which add TuneD to existing systems, the TuneD
+    system tuning plugin may add its GRUB variables to }\texttt{\DIFadd{loader/entries/*.conf}} \DIFadd{files but not
+    initialise them in }\texttt{\DIFadd{grub2/grub.cfg}}\DIFadd{. In order to avoid incorrect boots, OpenLinuxBoot
+    treats used, non-initialised GRUB variables as an error. When this flag is set, empty values
+    are added for the TuneD variables }\texttt{\DIFadd{tuned\_params}} \DIFadd{and }\texttt{\DIFadd{tuned\_initrd}} \DIFadd{if they
+    are not present. This is required for OpenLinuxBoot on TuneD systems with this problem, and
+    harmless otherwise.
+  }\DIFaddend \end{itemize} \medskip
 
   Flag values can be specified in hexadecimal beginning with \texttt{0x} or in decimal,
   e.g. \texttt{flags=0x80} or \texttt{flags=128}. It is also possible to specify flags to
@@ -7108,7 +7122,7 @@ options for the driver may be specified in \texttt{UEFI/Drivers/Arguments}:
 
 OpenLinuxBoot can detect the \texttt{loader/entries/*.conf} files created according to the
 \href{https://systemd.io/BOOT_LOADER_SPECIFICATION/}{Boot Loader Specification} or the closely related
-\href{https://fedoraproject.org/wiki/Changes/BootLoaderSpecByDefault}{systemd BootLoaderSpecByDefault}. The
+\href{https://fedoraproject.org/wiki/Changes/BootLoaderSpecByDefault}{\DIFdelbegin \DIFdel{systemd }\DIFdelend \DIFaddbegin \DIFadd{Fedora }\DIFaddend BootLoaderSpecByDefault}. The
 former is specific to systemd-boot and is used by Arch Linux, the latter applies to most Fedora-related distros
 including Fedora itself, RHEL and variants.
 
@@ -7124,13 +7138,13 @@ all kernel arguments except \texttt{initrd=...} must be fully specified by hand 
 \texttt{autoopts:\{partuuid\}=...} (\texttt{+=} variants of these options will not work, as these only add additional
 arguments).
 
-BootLoaderSpecByDefault (but not pure Boot Loader Specification) can expand GRUB variables
+\DIFdelbegin \DIFdel{BootLoaderSpecByDefault }\DIFdelend \DIFaddbegin \DIFadd{Fedora }\texttt{\DIFadd{BootLoaderSpecByDefault}} \DIFaddend (but not pure Boot Loader Specification) can expand GRUB variables
 in the \texttt{*.conf} files -- and this is used in practice in certain distros such as CentOS.
 In order to handle this correctly, when this situation is detected OpenLinuxBoot extracts all variables from
 \texttt{\{boot\}/grub2/grubenv} and also any unconditionally set variables from
 \texttt{\{boot\}/grub2/grub.cfg}, and then expands these where required in \texttt{*.conf} file entries.
 
-The only currently supported method of starting Linux kernels relies on their being compiled with EFISTUB.
+The only currently supported method of starting Linux kernels \DIFaddbegin \DIFadd{from OpenLinuxBoot }\DIFaddend relies on their being compiled with EFISTUB.
 This applies to almost all modern distros, particularly those which use systemd. Note that most modern
 distros use systemd as their system manager, even though most do not use systemd-boot as
 their bootloader.
@@ -7274,7 +7288,7 @@ the driver within the \texttt{UEFI/Drivers} section:
   \item \texttt{-{}-force-codec} - Integer value, no default. \medskip
 
   Force use of an audio codec, this value should be equal to \texttt{Audio} section \texttt{AudioCodec}.
-  Can result in faster boot especially when used in conjuction with \texttt{-{}-force-device}. \medskip
+  Can result in faster boot especially when used in \DIFdelbegin \DIFdel{conjuction }\DIFdelend \DIFaddbegin \DIFadd{conjunction }\DIFaddend with \texttt{-{}-force-device}. \medskip
 
   \item \texttt{-{}-force-device} - String value, no default. \medskip
 
@@ -7778,7 +7792,7 @@ OpenCore is installed, in order for the \texttt{Launchd.command} script to work 
   On older Macs, this is because the implementation available is too old to be used while on newer Macs,
   it is because of optimisations added by Apple which do not connect the Apple Event protocol
   except when needed -- e.g. except when the Apple boot picker is explicitly started.
-  Due to its somewhat unpredicatable results, this option is not typically recommended.
+  Due to its somewhat \DIFdelbegin \DIFdel{unpredicatable }\DIFdelend \DIFaddbegin \DIFadd{unpredictable }\DIFaddend results, this option is not typically recommended.
   \item \texttt{Builtin} ---  Always use OpenCore's updated re-implementation of the Apple Event protocol.
   Use of this setting is recommended even on Apple hardware, due to
   improvements (better fine mouse control, configurable key delays) made in the OpenCore re-implementation
@@ -8141,7 +8155,7 @@ OpenCore is installed, in order for the \texttt{Launchd.command} script to work 
   NVRAM variable is higher than this. This is to avoid over-loud UEFI audio when the system volume is set very high,
   or the \texttt{SystemAudioVolumeDB} NVRAM value has been misconfigured.
 
-  \emph{Note 1}: Decibels (dB) specify gain (postive values; increase in volume) or attenuation (negative values; decrease
+  \emph{Note 1}: Decibels (dB) specify gain (\DIFdelbegin \DIFdel{postive }\DIFdelend \DIFaddbegin \DIFadd{positive }\DIFaddend values; increase in volume) or attenuation (negative values; decrease
   in volume) compared to some reference level. When you hear the sound level of a jet plane expressed as 120 decibels, say,
   the reference level is the sound level just audible to an average human. However generally
   in acoustic science and computer audio any reference level can be specified. Intel HDA and macOS natively use
@@ -8178,7 +8192,7 @@ OpenCore is installed, in order for the \texttt{Launchd.command} script to work 
   The boot chime will not play if the system amplifier gain level in the
   \texttt{SystemAudioVolumeDB} NVRAM variable is lower than this.
 
-  \emph{Note 1}: This setting is designed to save unecessary pauses due to audio setup at inaudible volume
+  \emph{Note 1}: This setting is designed to save \DIFdelbegin \DIFdel{unecessary }\DIFdelend \DIFaddbegin \DIFadd{unnecessary }\DIFaddend pauses due to audio setup at inaudible volume
   levels, when no sound will be heard anyway. Whether there are inaudible volume levels depends on the
   hardware. On some hardware (including Apple) the audio values are well enough matched to the hardware
   that the lowest volume levels available are very quiet but audible, whereas on some other hardware combinations,
@@ -8614,7 +8628,7 @@ OpenCore is installed, in order for the \texttt{Launchd.command} script to work 
   \textbf{Failsafe}: \texttt{false}\\
   \textbf{Description}: Reconnect all graphics drivers during driver connection.
 
-  On certain firmware, it may be desireable to use an alternative graphics driver,
+  On certain firmware, it may be \DIFdelbegin \DIFdel{desireable }\DIFdelend \DIFaddbegin \DIFadd{desirable }\DIFaddend to use an alternative graphics driver,
   for example BiosVideo.efi, providing better screen resolution options on legacy
   machines, or a driver supporting \texttt{ForceResolution}. This option attempts
   to disconnect all currently connected graphics drivers before connecting newly
