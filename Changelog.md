@@ -1,5 +1,8 @@
 OpenCore Changelog
 ==================
+#### v1.0.7
+- Improved `XhciPortLimit` compatibility with macOS Tahoe, thx @laobamac
+
 #### v1.0.6
 - Added workaround for not detected CPU frequency in ProvideCpuInfo quirk, thx @hg13bs
 - Updated QemuBuild.command to support `EFI` mode without Duet
@@ -12,6 +15,7 @@ OpenCore Changelog
 - Fixed ACPI 1.0 RSDP being reported under ACPI 2.0 GUID with Duet
 - Improved logic for RSDP version checking in ACPI patching code
 - Downgraded routine log messages such as 'Needs journal recovery, mounting read-only' from WARN to INFO in Ext4Dxe (allows DEBUG_WARN in HaltLevel)
+- Improved OpenNtfsDxe stability, thx @stokescat
 
 #### v1.0.5
 - Fixed incorrect print in PCI device info dumping in `SysReport`
